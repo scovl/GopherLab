@@ -1,0 +1,48 @@
+services:
+  runner:
+    build:
+      context: ./runner
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    container_name: aprenda-go-runner
+    mem_limit: 512m
+    cpus: '1.0'
+
+  # Run Go tests: docker compose --profile test run --rm runner-test
+  runner-test:
+    build:
+      context: ./runner
+      dockerfile: Dockerfile
+      target: test-runner
+    container_name: aprenda-go-runner-test
+    mem_limit: 512m
+    cpus: '1.0'
+    profiles:
+      - test
+
+  aprenda-go:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+    container_name: aprenda-go
+    depends_on:
+      - runner
+
+  # Dev mode: hot reload — docker compose --profile dev up
+  aprenda-go-dev:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+    ports:
+      - "3001:3000"
+    command: sh -c "npm install && npm run dev"
+    profiles:
+      - dev
+
+volumes:
+  node_modules:
