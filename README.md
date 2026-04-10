@@ -1,12 +1,8 @@
-# AprendaGo — Plataforma Interativa de Aprendizado em Go
-
 **AprendaGo** é uma plataforma web para aprender a linguagem Go do zero ao avançado, com execução de código diretamente no navegador e uma metodologia estruturada que vai além de tutoriais comuns.
 
----
+Ele combina conteúdo técnico progressivo com uma metodologia ativa de aprendizado chamada **[MESA](https://www.youtube.com/watch?v=FtdjtUPTHtA&t=2s)**, que organiza cada lição em quatro fases:
 
-## O que é o AprendaGo?
-
-O AprendaGo combina conteúdo técnico progressivo com uma metodologia ativa de aprendizado chamada **MESA**, que organiza cada lição em quatro fases:
+[![Assista: MESA — Metodologia de Aprendizado](https://img.youtube.com/vi/FtdjtUPTHtA/maxresdefault.jpg)](https://www.youtube.com/watch?v=FtdjtUPTHtA&t=2s)
 
 | Fase | O que acontece |
 |------|----------------|
