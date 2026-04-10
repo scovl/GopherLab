@@ -29,29 +29,24 @@ O aprendizado não é passivo: cada lição exige que você escreva e execute c�
 
 - [Docker](https://www.docker.com/) e Docker Compose
 
-### Produção (porta 3000)
-
 ```bash
 git clone https://github.com/scovl/AprendaGo.git
 cd AprendaGo
-docker compose up -d --build
 ```
 
-Acesse: **http://localhost:3000**, simples assim. O frontend é servido por nginx, e o backend Go roda em um container separado. O conteúdo do roadmap é carregado do arquivo `src/data/roadmap.ts` no build.
+### Comandos disponíveis (`make help`)
 
-### Desenvolvimento com hot reload (porta 3001)
+| Comando | O que faz |
+|---------|-----------|
+| `make up` | Sobe em produção — acesse **http://localhost:3000** |
+| `make dev` | Hot reload — acesse **http://localhost:3001** |
+| `make down` | Derruba os containers |
+| `make test` | Roda todos os testes (Go + TypeScript) |
+| `make lint` | Análise estática: `go vet` + `tsc --noEmit` |
+| `make fmt` | Formata o código Go |
+| `make build` | Build do frontend isolado |
 
-```bash
-docker compose --profile dev up
-```
-
-Acesse: **http://localhost:3001** — alterações em `src/` refletem imediatamente.
-
-### Executar testes do backend Go
-
-```bash
-docker compose --profile test run --rm runner-test
-```
+O frontend é servido por nginx, e o backend Go roda em container separado com sandbox isolado (timeout 10s, 512 MB, 4 execuções simultâneas).
 
 ---
 
