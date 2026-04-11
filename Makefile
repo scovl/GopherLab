@@ -1,4 +1,4 @@
-.PHONY: help dev up down logs build test test-go test-ts lint fmt
+.PHONY: help dev up down restart logs build test test-go test-ts lint fmt
 
 RUNNER_DIR := runner
 
@@ -13,6 +13,10 @@ up: ## Sobe os containers em produção (porta 3000)
 
 down: ## Derruba os containers
 	docker compose down
+
+restart: ## Reinicia os containers (rebuild + up)
+	docker compose down
+	docker compose up -d --build
 
 dev: ## Sobe o ambiente de desenvolvimento com hot reload (porta 3001)
 	docker compose --profile dev up
