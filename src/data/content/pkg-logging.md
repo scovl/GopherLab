@@ -2,27 +2,6 @@
 title: "Logging: slog, Zap e Zerolog"
 description: Logging estruturado com slog (stdlib), Zap (Uber) e Zerolog.
 estimatedMinutes: 35
-codeExample: |
-  package main
-
-  import (
-  	"log/slog"
-  	"os"
-  )
-
-  func main() {
-  	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-  		Level: slog.LevelDebug,
-  	}))
-  	logger.Info("servidor iniciado",
-  		slog.String("addr", ":8080"),
-  		slog.Int("workers", 4),
-  	)
-  	logger.Error("falha na conexão",
-  		slog.String("host", "db.local"),
-  		slog.Any("error", "connection refused"),
-  	)
-  }
 recursos:
   - https://pkg.go.dev/log/slog
   - https://github.com/uber-go/zap
@@ -33,6 +12,41 @@ experimentacao:
     - slog.SetDefault(logger) define logger global
     - zap.NewProduction() cria logger otimizado
     - "zerolog: log.Info().Str(key, val).Msg(mensagem)"
+  codeTemplate: |
+    package main
+
+    import (
+    	"log/slog"
+    	"os"
+    )
+
+    func main() {
+    	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+    		Level: slog.LevelDebug,
+    	}))
+    	logger.Info("servidor iniciado",
+    		slog.String("addr", ":8080"),
+    		slog.Int("workers", 4),
+    	)
+    	logger.Error("falha na conexão",
+    		slog.String("host", "db.local"),
+    		slog.Any("error", "connection refused"),
+    	)
+    }
+  notaPos: |
+    #### O que aconteceu nesse código?
+
+    **`slog.New(slog.NewJSONHandler(...))`** — cria um logger estruturado que emite JSON. `slog` (Go 1.21+) é o padrão moderno da stdlib para logging — substitui o `log` básico em aplicações de produção.
+
+    **`slog.String("addr", ":8080")`** — campos tipados key-value. Ao contrário de `log.Printf("addr=%s", addr)`, campos estruturados são **pesquisáveis e filtráveis** em ferramentas como ELK, Grafana Loki e Datadog.
+
+    **`HandlerOptions{Level: slog.LevelDebug}`** — configura o nível mínimo de log. Mensagens abaixo do nível são descartadas sem alocação. Níveis padrão: `Debug` (-4), `Info` (0), `Warn` (4), `Error` (8).
+
+    **`slog.NewJSONHandler` vs `slog.NewTextHandler`** — JSON para produção (máquinas), texto para desenvolvimento (humanos). Troque o handler sem mudar nenhuma chamada de log no código.
+
+    **`slog.SetDefault(logger)`** — define o logger como global. Após isso, `slog.Info(...)` usa o logger configurado. Permite configurar uma vez em `main()` e usar em todo o código.
+
+    **Alternativas** — `zap` (Uber): performance máxima, zero allocation; `zerolog`: API fluent (`log.Info().Str(k,v).Msg(m)`), zero allocation. Ambos são mais rápidos que `slog` em benchmarks, mas `slog` não tem dependência externa.
 socializacao:
   discussao: Quando usar slog (stdlib) vs Zap/Zerolog? Logging estruturado vale a complexidade?
   pontos:
@@ -53,6 +67,55 @@ aplicacao:
     - Níveis corretos
     - Output estruturado
     - Fácil de filtrar
+  starterCode: |
+    package main
+
+    import (
+    	"log/slog"
+    	"os"
+    )
+
+    func configurarLogger(env string) *slog.Logger {
+    	opts := &slog.HandlerOptions{}
+    	if env == "dev" {
+    		opts.Level = slog.LevelDebug
+    		return slog.New(slog.NewTextHandler(os.Stdout, opts))
+    	}
+    	opts.Level = slog.LevelInfo
+    	return slog.New(slog.NewJSONHandler(os.Stdout, opts))
+    }
+
+    func processarPedido(logger *slog.Logger, id int, produto string) {
+    	logger.Info("pedido recebido",
+    		slog.Int("pedido_id", id),
+    		slog.String("produto", produto),
+    	)
+    	if produto == "" {
+    		logger.Error("produto inválido",
+    			slog.Int("pedido_id", id),
+    			slog.String("erro", "produto vazio"),
+    		)
+    		return
+    	}
+    	logger.Debug("processando",
+    		slog.Int("pedido_id", id),
+    		slog.String("etapa", "validação"),
+    	)
+    	logger.Info("pedido finalizado",
+    		slog.Int("pedido_id", id),
+    		slog.String("status", "sucesso"),
+    	)
+    }
+
+    func main() {
+    	logger := configurarLogger("dev")
+    	slog.SetDefault(logger)
+
+    	processarPedido(logger, 1, "Curso Go")
+    	processarPedido(logger, 2, "")
+    	processarPedido(logger, 3, "Workshop Docker")
+    }
+
 ---
 
 O pacote `log` básico é suficiente para scripts. Para produção, use **`log/slog`** (Go 1.21+) que fornece logging estruturado com níveis (`Debug`, `Info`, `Warn`, `Error`), output JSON e handlers customizáveis.

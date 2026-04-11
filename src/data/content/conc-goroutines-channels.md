@@ -14,6 +14,65 @@ experimentacao:
     - "Fan-in: N goroutines escrevem em um channel de resultados"
     - select com default para operação não-bloqueante
     - Sempre close(ch) quando não há mais dados a enviar
+  codeTemplate: |
+    package main
+
+    import (
+    	"fmt"
+    	"sync"
+    	"time"
+    )
+
+    func produtor(ch chan<- int, id int) {
+    	for i := 0; i < 5; i++ {
+    		val := id*100 + i
+    		ch <- val
+    		fmt.Printf("Produtor %d enviou %d\n", id, val)
+    	}
+    }
+
+    func consumidor(ch <-chan int, wg *sync.WaitGroup) {
+    	defer wg.Done()
+    	for val := range ch {
+    		fmt.Printf("  Consumidor recebeu: %d\n", val)
+    		time.Sleep(100 * time.Millisecond)
+    	}
+    }
+
+    func main() {
+    	ch := make(chan int, 3) // channel buffered
+
+    	// Fan-out: 2 produtores
+    	go produtor(ch, 1)
+    	go produtor(ch, 2)
+
+    	// Fecha o channel quando produtores terminarem
+    	go func() {
+    		time.Sleep(time.Second)
+    		close(ch)
+    	}()
+
+    	// Fan-in: 2 consumidores
+    	var wg sync.WaitGroup
+    	for i := 0; i < 2; i++ {
+    		wg.Add(1)
+    		go consumidor(ch, &wg)
+    	}
+    	wg.Wait()
+    	fmt.Println("Pipeline finalizado")
+    }
+  notaPos: |
+    #### O que aconteceu nesse código?
+
+    **`ch := make(chan int, 3)`** — cria um channel buffered com capacidade 3. Até 3 valores podem ser enviados sem bloquear. No quarto envio, o produtor bloqueia até um consumidor receber. Canal sem capacidade (`make(chan int)`) é **unbuffered** — cada envio bloqueia até ter um receptor pronto.
+
+    **`chan<- int` e `<-chan int`** — tipos direcionais. `chan<- int` é send-only (produtor), `<-chan int` é receive-only (consumidor). O compilador impede operações inválidas. O channel bidirecional `chan int` converte implicitamente para ambos.
+
+    **`for val := range ch`** — itera valores recebidos do channel até ele ser **fechado**. Após `close(ch)`, o range drena valores restantes no buffer e termina. Sem `close`, o `range` bloqueia para sempre (goroutine leak!).
+
+    **`close(ch)`** — sinaliza que não há mais valores. Enviar para channel fechado causa **panic**. Receber de channel fechado retorna zero value + `ok=false`. Fechar channel `nil` ou já fechado causa **panic**.
+
+    **Regra fundamental** — o runtime Go usa o modelo **M:N**. `GOMAXPROCS` threads OS multiplexam milhares de goroutines, cada uma com ~2KB de stack elástica. A troca de contexto é feita pelo scheduler Go (não pelo kernel), ordens de grandeza mais barata que threads OS.
 socializacao:
   discussao: "Rob Pike: 'Concorrência não é paralelismo.' O que isso significa?"
   pontos:
@@ -34,6 +93,76 @@ aplicacao:
     - Pipeline funcional
     - Goroutines finalizadas
     - Channels fechados
+  starterCode: |
+    package main
+
+    import (
+    	"fmt"
+    	"math/rand"
+    	"sync"
+    	"time"
+    )
+
+    func gerador(n int) <-chan int {
+    	ch := make(chan int)
+    	go func() {
+    		defer close(ch)
+    		for i := 0; i < n; i++ {
+    			ch <- rand.Intn(100)
+    		}
+    	}()
+    	return ch
+    }
+
+    func dobrar(in <-chan int) <-chan int {
+    	out := make(chan int)
+    	go func() {
+    		defer close(out)
+    		for v := range in {
+    			out <- v * 2
+    		}
+    	}()
+    	return out
+    }
+
+    func filtrar(in <-chan int, min int) <-chan int {
+    	out := make(chan int)
+    	go func() {
+    		defer close(out)
+    		for v := range in {
+    			if v >= min {
+    				out <- v
+    			}
+    		}
+    	}()
+    	return out
+    }
+
+    func coletar(in <-chan int, wg *sync.WaitGroup, resultados *[]int) {
+    	defer wg.Done()
+    	for v := range in {
+    		*resultados = append(*resultados, v)
+    	}
+    }
+
+    func main() {
+    	start := time.Now()
+
+    	// Pipeline: gerar → dobrar → filtrar(>=50)
+    	numeros := gerador(20)
+    	dobrados := dobrar(numeros)
+    	filtrados := filtrar(dobrados, 50)
+
+    	var wg sync.WaitGroup
+    	var resultados []int
+    	wg.Add(1)
+    	go coletar(filtrados, &wg, &resultados)
+    	wg.Wait()
+
+    	fmt.Println("Resultados:", resultados)
+    	fmt.Println("Tempo:", time.Since(start))
+    }
+
 ---
 
 Goroutines são threads cooperativas gerenciadas pelo runtime Go (modelo **M:N**). Cada goroutine começa com ~2KB de stack, que cresce e encolhe de forma elástica. O scheduler usa `GOMAXPROCS` threads OS (padrão: número de CPUs) para multiplexar goroutines. É viável criar **milhares de goroutines** — o custo marginal é ordens de grandeza menor que threads OS.

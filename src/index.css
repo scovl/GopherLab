@@ -78,9 +78,9 @@
 }
 
 /* Font size scaling */
-[data-font-size="normal"] { --font-base: 16px; }
-[data-font-size="large"] { --font-base: 18px; }
-[data-font-size="extra-large"] { --font-base: 20px; }
+[data-font-size="normal"] { --font-base: 18px; }
+[data-font-size="large"] { --font-base: 20px; }
+[data-font-size="extra-large"] { --font-base: 22px; }
 
 /* Line spacing */
 [data-line-spacing="normal"] { --line-height: 1.6; }
@@ -128,7 +128,7 @@ html {
 }
 
 body {
-  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif;
+  font-family: 'Rokkitt', 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif;
   background-color: var(--bg-primary);
   color: var(--text-primary);
   line-height: var(--line-height);

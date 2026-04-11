@@ -2,24 +2,6 @@
 title: Packages, Módulos e Dependências
 description: Organização em packages, go mod, exportação por maiúscula, internal/ e dependências.
 estimatedMinutes: 40
-codeExample: |
-  # Estrutura de projeto
-  myapp/
-  ├── go.mod
-  ├── cmd/
-  │   └── server/main.go
-  ├── internal/
-  │   ├── handler/handler.go
-  │   └── service/service.go
-  ├── pkg/
-  │   └── validator/validator.go
-  └── go.sum
-
-  # Comandos essenciais
-  go mod init github.com/user/myapp
-  go get github.com/gin-gonic/gin@latest
-  go mod tidy
-  go mod vendor
 recursos:
   - https://go.dev/ref/mod
   - https://go.dev/doc/modules/layout
@@ -30,6 +12,45 @@ experimentacao:
     - Apenas nomes com letra maiúscula são exportados
     - Use go mod init para inicializar
     - internal/ impede acesso de fora do módulo
+  codeTemplate: |
+    package main
+
+    import (
+    	"fmt"
+    	"strings"
+    )
+
+    // Saudar é exportada — começa com maiúscula, visível a outros packages
+    func Saudar(nome string) string {
+    	return "Olá, " + nome + "!"
+    }
+
+    // normalizar não é exportada — começa com minúscula, privada ao package
+    func normalizar(s string) string {
+    	return strings.TrimSpace(strings.ToLower(s))
+    }
+
+    func main() {
+    	fmt.Println(Saudar("Gopher"))
+    	fmt.Println(normalizar("  Go Lang  "))
+    	palavras := strings.Fields("  foo   bar  baz  ")
+    	fmt.Println(palavras, len(palavras))
+    }
+  notaPos: |
+    #### O que aconteceu nesse código?
+
+    **`strings.Fields`** — do pacote `strings` da biblioteca padrão. Divide uma string por whitespace e retorna `[]string`. Importamos o pacote e usamos na forma `strings.NomeDaFunção`.
+
+    **`Saudar` vs `normalizar`** — `Saudar` começa com maiúscula: **exportada**, visível a outros packages. `normalizar` começa com minúscula: **não-exportada**, privada ao package. Não existe `public`/`private` em Go — a capitalização faz essa distinção.
+
+    **`import "strings"`** — Go não permite imports não usados. Se você importar e não usar nenhuma função do pacote, **não compila**. Isso elimina código morto e dependências desnecessárias.
+
+    **Organização real de projetos**:
+    - `cmd/` — pontos de entrada (`package main`)
+    - `internal/` — código privado ao módulo (outros módulos externos não podem importar)
+    - `pkg/` — bibliotecas reutilizáveis exportadas
+
+    **`go mod init github.com/user/repo`** — cria o `go.mod`, que define o module path e lista dependências. `go mod tidy` sincroniza o `go.sum` adicionando o que falta e removendo o que não é usado.
 socializacao:
   discussao: Como a convenção de exportação por maiúscula afeta o design de APIs em Go?
   pontos:
@@ -49,9 +70,40 @@ aplicacao:
     - Estrutura correta
     - Imports funcionais
     - Compilação sem erros
+  starterCode: |
+    package main
+
+    import (
+    	"fmt"
+    	"strings"
+    )
+
+    // Exportado: disponível para outros packages
+    func ValidarEmail(email string) bool {
+    	return strings.Contains(email, "@") && strings.Contains(email, ".")
+    }
+
+    // Não-exportado: privado ao package
+    func normalizar(s string) string {
+    	return strings.TrimSpace(strings.ToLower(s))
+    }
+
+    func main() {
+    	emails := []string{
+    		"  USUARIO@EXEMPLO.COM  ",
+    		"invalido-sem-arroba",
+    		"outro@teste.org",
+    	}
+    	for _, e := range emails {
+    		norm := normalizar(e)
+    		valido := ValidarEmail(norm)
+    		fmt.Printf("%-28s → válido: %v\n", norm, valido)
+    	}
+    }
+
 ---
 
-Packages organizam código — cada diretório é um package.; minúscula é privado ao package. Módulos (`go.mod`) gerenciam dependências com semantic versioning.
+Packages organizam código — cada diretório é um package; minúscula é privado ao package. Módulos (`go.mod`) gerenciam dependências com semantic versioning.
 
 ## Comandos essenciais
 

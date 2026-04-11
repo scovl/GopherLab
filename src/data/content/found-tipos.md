@@ -2,37 +2,6 @@
 title: Sistema de Tipos e Variáveis
 description: Tipos primitivos, var, :=, constantes, iota, zero values, conversão e escopo.
 estimatedMinutes: 45
-codeExample: |
-  package main
-
-  import (
-  	"fmt"
-  	"strconv"
-  )
-
-  type Permission uint
-
-  const (
-  	Readable   Permission = 1 << iota
-  	Writable
-  	Executable
-  )
-
-  func main() {
-  	var nome string = "Go"
-  	idade := 15
-  	var x int
-  	var s string
-  	var b bool
-  	var p *int
-  	f := float64(idade)
-  	n := int(f)
-  	fmt.Println(string(65))
-  	fmt.Println(strconv.Itoa(65))
-  	perms := Readable | Writable
-  	fmt.Println(perms&Executable != 0)
-  	fmt.Println(nome, idade, x, s, b, p, f, n)
-  }
 recursos:
   - https://go.dev/tour/basics/8
   - https://gobyexample.com/variables
@@ -44,6 +13,49 @@ experimentacao:
     - "Conversão string ↔ int: strconv.Itoa(), strconv.Atoi()"
     - string(65) retorna "A" (converte rune), não "65"
     - Escopo variável declarada em if {} não existe fora dele
+  codeTemplate: |
+    package main
+
+    import (
+    	"fmt"
+    	"strconv"
+    )
+
+    type Permission uint
+
+    const (
+    	Readable   Permission = 1 << iota
+    	Writable
+    	Executable
+    )
+
+    func main() {
+    	var nome string = "Go"
+    	idade := 15
+    	var x int
+    	var s string
+    	var b bool
+    	var p *int
+    	f := float64(idade)
+    	n := int(f)
+    	fmt.Println(string(65))
+    	fmt.Println(strconv.Itoa(65))
+    	perms := Readable | Writable
+    	fmt.Println(perms&Executable != 0)
+    	fmt.Println(nome, idade, x, s, b, p, f, n)
+    }
+  notaPos: |
+    #### O que aconteceu nesse código?
+
+    **`iota`** — gerador de constantes em blocos `const`. Começa em `0` na primeira linha e incrementa 1 por linha. A expressão `1 << iota` é copiada para as linhas seguintes: `Readable = 1`, `Writable = 2`, `Executable = 4`.
+
+    **`string(65)`** — converte o inteiro 65 para o **caractere Unicode** de code point 65: `"A"`. Para converter o número para a string `"65"`, use `strconv.Itoa(65)` ou `fmt.Sprintf("%d", 65)`.
+
+    **Valores zero** — `var x int` → `0`, `var s string` → `""`, `var b bool` → `false`, `var p *int` → `nil`. Em Go, toda variável tem um valor zero garantido — nunca fica "indefinida".
+
+    **Conversão explícita** — `float64(idade)` e `int(f)` são obrigatórias. Go não converte implicitamente entre tipos. `int(f)` **trunca** (não arredonda) a parte fracionária.
+
+    **Bitwise** — `perms&Executable != 0` verifica se o bit da permissão está ativo. `Readable | Writable` une permissões com OR.
 socializacao:
   discussao: Quais são as vantagens e desvantagens da tipagem forte do Go comparada com linguagens dinâmicas?
   pontos:
@@ -63,6 +75,51 @@ aplicacao:
     - Tipos corretos
     - Conversões precisas
     - Código limpo
+  starterCode: |
+    package main
+
+    import (
+    	"fmt"
+    	"strconv"
+    )
+
+    type Status int
+
+    const (
+    	Pendente Status = iota
+    	Pago
+    	Enviado
+    	Entregue
+    )
+
+    func nomeStatus(s Status) string {
+    	switch s {
+    	case Pendente:
+    		return "Pendente"
+    	case Pago:
+    		return "Pago"
+    	case Enviado:
+    		return "Enviado"
+    	case Entregue:
+    		return "Entregue"
+    	default:
+    		return "Desconhecido"
+    	}
+    }
+
+    func main() {
+    	temperatura := 100.0
+    	inteiro := int(temperatura)
+    	texto := strconv.FormatFloat(temperatura, 'f', 1, 64)
+    	fmt.Println("Temperatura:", temperatura)
+    	fmt.Println("Como int:", inteiro)
+    	fmt.Println("Como string:", texto)
+    	fmt.Println("string(65):", string(65))
+    	fmt.Println("strconv.Itoa(65):", strconv.Itoa(65))
+    	pedido := Enviado
+    	fmt.Println("Status:", nomeStatus(pedido))
+    }
+
 ---
 
 Go é estaticamente tipado com **17 tipos básicos embutidos**: 1 booleano (`bool`), 11 inteiros (`int8`, `uint8`/`byte`, `int16`, `uint16`, `int32`/`rune`, `uint32`, `int64`, `uint64`, `int`, `uint`, `uintptr`), 2 de ponto flutuante (`float32`, `float64`), 2 complexos (`complex64`, `complex128`) e 1 string. `byte` é alias de `uint8` e `rune` é alias de `int32`. Os tipos `int` e `uint` têm tamanho dependente da arquitetura: 4 bytes em sistemas 32-bit e 8 bytes em sistemas 64-bit.

@@ -13,6 +13,129 @@ experimentacao:
     - "Testify: assert.Equal(t, expected, got)"
     - go test -bench=. -benchmem -count=5
     - go test -fuzz=FuzzNome -fuzztime=30s
+  codeTemplate: |
+    package store
+
+    import (
+    	"errors"
+    	"fmt"
+    	"strings"
+    	"testing"
+    )
+
+    // Interface para mocking
+    type UserRepo interface {
+    	FindByID(id string) (*User, error)
+    	Save(u *User) error
+    }
+
+    type User struct {
+    	ID   string
+    	Name string
+    }
+
+    var ErrNotFound = errors.New("not found")
+
+    // Mock manual — implementa a interface
+    type mockRepo struct {
+    	users map[string]*User
+    	saved []*User
+    }
+
+    func (m *mockRepo) FindByID(id string) (*User, error) {
+    	u, ok := m.users[id]
+    	if !ok {
+    		return nil, ErrNotFound
+    	}
+    	return u, nil
+    }
+
+    func (m *mockRepo) Save(u *User) error {
+    	m.saved = append(m.saved, u)
+    	return nil
+    }
+
+    // Service que depende da interface
+    type UserService struct {
+    	repo UserRepo
+    }
+
+    func (s *UserService) Greet(id string) (string, error) {
+    	u, err := s.repo.FindByID(id)
+    	if err != nil {
+    		return "", fmt.Errorf("greet: %w", err)
+    	}
+    	return "Olá, " + u.Name + "!", nil
+    }
+
+    func TestGreet(t *testing.T) {
+    	mock := &mockRepo{users: map[string]*User{
+    		"1": {ID: "1", Name: "Alice"},
+    	}}
+    	svc := &UserService{repo: mock}
+
+    	t.Run("user exists", func(t *testing.T) {
+    		msg, err := svc.Greet("1")
+    		if err != nil {
+    			t.Fatal("unexpected error:", err)
+    		}
+    		if msg != "Olá, Alice!" {
+    			t.Errorf("got %q; want %q", msg, "Olá, Alice!")
+    		}
+    	})
+
+    	t.Run("user not found", func(t *testing.T) {
+    		_, err := svc.Greet("999")
+    		if !errors.Is(err, ErrNotFound) {
+    			t.Errorf("got %v; want ErrNotFound", err)
+    		}
+    	})
+    }
+
+    // Benchmark
+    func BenchmarkGreet(b *testing.B) {
+    	mock := &mockRepo{users: map[string]*User{
+    		"1": {ID: "1", Name: "Alice"},
+    	}}
+    	svc := &UserService{repo: mock}
+    	for i := 0; i < b.N; i++ {
+    		svc.Greet("1")
+    	}
+    }
+
+    // Fuzz
+    func FuzzGreetName(f *testing.F) {
+    	f.Add("Alice")
+    	f.Add("")
+    	f.Add("日本語")
+    	f.Fuzz(func(t *testing.T, name string) {
+    		mock := &mockRepo{users: map[string]*User{
+    			"1": {ID: "1", Name: name},
+    		}}
+    		svc := &UserService{repo: mock}
+    		msg, err := svc.Greet("1")
+    		if err != nil {
+    			t.Fatal(err)
+    		}
+    		if !strings.HasPrefix(msg, "Olá, ") {
+    			t.Errorf("greeting %q doesn't start with 'Olá, '", msg)
+    		}
+    	})
+    }
+  notaPos: |
+    #### O que aconteceu nesse código?
+
+    **Mock manual via interface** — `mockRepo` implementa `UserRepo` com um `map` interno. Não precisa de framework: defina a interface, crie struct com os dados de teste, implemente os métodos. Go incentiva interfaces pequenas (1-3 métodos) — fáceis de mocar.
+
+    **`errors.Is(err, ErrNotFound)`** — no test de "user not found", verificamos que o erro **wrapped** (`"greet: not found"`) ainda contém o sentinela original. Sem wrapping com `%w`, isso falharia. Teste sempre a cadeia de erros, não a mensagem.
+
+    **Benchmark `b.N`** — o framework ajusta `b.N` automaticamente para obter medição estável. `go test -bench=. -benchmem -count=5` mostra ns/op, B/op e allocs/op. `-count=5` roda 5 vezes para detectar variação.
+
+    **`b.ResetTimer()`** — se o benchmark tem setup pesado, chame `b.ResetTimer()` após o setup para não contaminar a medição. `b.ReportAllocs()` é equivalente a `-benchmem` para um benchmark específico.
+
+    **Fuzzing `f.Add` + `f.Fuzz`** — `f.Add("seed")` define o seed corpus; o fuzzer gera variações automaticamente. Inputs que causam panic são salvos em `testdata/fuzz/FuzzNome/` e executados em testes normais. Use fuzzing para funções que aceitam input do usuário.
+
+    **Testify** — `assert.Equal(t, expected, got)` dá diff claro na falha. `require.NoError(t, err)` para na primeira falha (equivalente a `t.Fatal`). Testify é opcional — Go nativo é suficiente para a maioria dos casos.
 socializacao:
   discussao: "Mocks vs integration tests: qual o balanço ideal?"
   pontos:
@@ -32,6 +155,56 @@ aplicacao:
     - Suite completa
     - Mocks isolam deps
     - Benchmarks documentados
+  starterCode: |
+    package calc
+
+    import (
+    	"errors"
+    	"testing"
+    )
+
+    type Calculator interface {
+    	Add(a, b float64) float64
+    	Divide(a, b float64) (float64, error)
+    }
+
+    var ErrDivideByZero = errors.New("division by zero")
+
+    type calculator struct{}
+
+    func (c *calculator) Add(a, b float64) float64 { return a + b }
+
+    func (c *calculator) Divide(a, b float64) (float64, error) {
+    	if b == 0 {
+    		return 0, ErrDivideByZero
+    	}
+    	return a / b, nil
+    }
+
+    func New() Calculator { return &calculator{} }
+
+    // TODO: implemente TestAdd com table-driven tests
+    //   Casos: positivos, negativos, zeros, floats grandes
+
+    // TODO: implemente TestDivide com table-driven tests
+    //   Inclua caso de divisão por zero com errors.Is
+
+    // TODO: implemente BenchmarkAdd e BenchmarkDivide
+
+    // TODO: implemente FuzzDivide
+    //   - Seed: (10, 2), (0, 1), (1, 0)
+    //   - Verifique: result * b ≈ a (com tolerância)
+    //   - Verifique: b == 0 retorna ErrDivideByZero
+
+    // TODO: crie mockCalculator para testar código que depende
+    //   da interface Calculator sem usar a implementação real
+
+    func TestPlaceholder(t *testing.T) {
+    	c := New()
+    	_ = c
+    	t.Log("Implemente os testes acima")
+    }
+
 ---
 
 ## Mocking com interfaces
