@@ -2163,6 +2163,26 @@ body {
   display: block;
 }
 
+/* --- Footer --- */
+.app-footer {
+  margin-top: auto;
+  padding: 1.5rem 0 0.5rem;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-muted, #6b7280);
+  width: 100%;
+}
+
+.app-footer a {
+  color: var(--text-muted, #6b7280);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.app-footer a:hover {
+  color: var(--accent, #0ea5e9);
+}
+
 /* ===================== IRC Modal (legacy, unused) ===================== */
 
 .irc-modal-overlay {

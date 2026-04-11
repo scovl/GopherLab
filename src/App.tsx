@@ -92,6 +92,14 @@ export function App() {
           </div>
         )}
         {currentView === 'irc' && <IrcView />}
+
+        {currentView !== 'irc' && (
+          <footer className="app-footer">
+            <a href="https://scovl.github.io/" target="_blank" rel="noopener noreferrer">
+              Vitor Lobo
+            </a>
+          </footer>
+        )}
       </div>
 
       <aside className="roadmap-sidebar" aria-label="Mapa visual do roadmap">
