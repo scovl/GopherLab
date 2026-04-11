@@ -122,37 +122,126 @@ aplicacao:
 
 ---
 
-Structs agrupam campos nomeados de tipos possivelmente diferentes. Structs são **value types**: atribuição copia todos os campos. A comparação com `==` funciona se todos os campos forem comparáveis.
+## O que é uma struct?
 
-## Struct tags
-
-Struct tags são literais de string entre backticks nos campos que fornecem metadados para bibliotecas via reflection:
+Uma **struct** é a forma do Go de agrupar dados relacionados numa coisa só — como uma ficha cadastral. Em vez de ter variáveis soltas para nome, idade e email, você junta tudo num único tipo:
 
 ```go
-type User struct {
-    Name  string `json:"name"`
-    Email string `json:"email,omitempty"`
-    Pass  string `json:"-"`             // excluído do JSON
+type Pessoa struct {
+    Nome  string
+    Idade int
+    Email string
 }
 ```
 
-- `json:"nome,omitempty"` — renomeia e omite se zero value
-- `validate:"required,min=1"` — para validadores como `go-playground/validator`
-- Acessados via `reflect.TypeOf(s).Field(i).Tag.Get("json")`
-
-## Embedding (incorporação)
-
-Embedding inclui um tipo dentro de outro sem nomeação — seus campos e métodos são **promovidos** ao tipo externo:
+Para criar uma `Pessoa`:
 
 ```go
+p := Pessoa{Nome: "Ana", Idade: 28, Email: "ana@go.dev"}
+fmt.Println(p.Nome)  // Ana
+```
+
+> **Regra de ouro:** campos que começam com **maiúscula** são públicos (visíveis fora do pacote). Com minúscula, são privados.
+
+## Structs são "value types" — cópia, não referência
+
+Quando você atribui uma struct a outra variável, Go **copia todos os campos**. A cópia é independente do original:
+
+```go
+p2 := p          // cópia completa
+p2.Nome = "Bob"  // não altera p!
+fmt.Println(p.Nome)  // "Ana" — intacta
+```
+
+Isso é diferente de slices e maps, que compartilham dados. Se quiser compartilhar uma struct, use um **ponteiro** (`*Pessoa`).
+
+## Métodos — dando comportamento à struct
+
+Você pode criar funções "amarradas" a uma struct. Isso se chama **método**:
+
+```go
+func (p Pessoa) Saudacao() string {
+    return fmt.Sprintf("Olá, sou %s!", p.Nome)
+}
+
+fmt.Println(p.Saudacao())  // Olá, sou Ana!
+```
+
+O `(p Pessoa)` antes do nome é o **receiver**. Existem dois tipos:
+
+| Receiver | Sintaxe | Quando usar |
+|---|---|---|
+| **Value** | `func (p Pessoa)` | Só lê os dados (não modifica) |
+| **Pointer** | `func (p *Pessoa)` | Precisa modificar a struct |
+
+```go
+func (p *Pessoa) Aniversario() {
+    p.Idade++  // modifica a struct original!
+}
+```
+
+## Struct tags — etiquetas nos campos
+
+Struct tags são **anotações** entre crases que dizem a bibliotecas como tratar cada campo. A mais comum é para JSON:
+
+```go
+type User struct {
+    Name  string `json:"name"`              // no JSON vira "name"
+    Email string `json:"email,omitempty"`   // omite se estiver vazio
+    Senha string `json:"-"`                 // nunca aparece no JSON
+}
+```
+
+| Tag | O que faz |
+|---|---|
+| `json:"nome"` | Renomeia o campo no JSON |
+| `json:"nome,omitempty"` | Renomeia e omite se for zero value |
+| `json:"-"` | Exclui o campo completamente |
+
+Na prática, quase toda API em Go usa struct tags para controlar a serialização JSON.
+
+## Embedding — composição sem herança
+
+Go **não tem herança** (nada de `class Carro extends Veiculo`). Em vez disso, usa **embedding**: você coloca um tipo dentro de outro **sem dar nome**, e os campos e métodos dele são "promovidos":
+
+```go
+type Endereco struct {
+    Rua    string
+    Cidade string
+}
+
+type Pessoa struct {
+    Nome string
+    Endereco        // embedding — sem nome!
+}
+
+p := Pessoa{Nome: "Ana", Endereco: Endereco{Rua: "Av Go", Cidade: "SP"}}
+fmt.Println(p.Cidade)  // acessa direto, sem p.Endereco.Cidade!
+```
+
+O que está acontecendo:
+- `Pessoa` **não é** um tipo de `Endereco` (não é is-a)
+- `Pessoa` **contém** um `Endereco` (é has-a)
+- Os campos `Rua` e `Cidade` ficam acessíveis diretamente em `Pessoa`
+- Mas `p.Endereco` também funciona se você quiser acessar o tipo embedded inteiro
+
+> **Cuidado:** se você embeddar dois tipos que têm um campo com o **mesmo nome**, o compilador dá erro. Nesse caso, você precisa acessar especificando o tipo: `p.Tipo1.Campo`.
+
+## Por que composição em vez de herança?
+
+Em linguagens como Java/C#, criamos árvores de herança profundas (`Animal → Mamifero → Cachorro → Labrador`). Em Go, você **combina peças menores**:
+
+```go
+type Motor struct { Potencia int }
+type GPS   struct { Lat, Lon float64 }
+
 type Carro struct {
-    Veiculo         // embedding — acesso via c.Motor, c.Ligar()
+    Motor   // tem motor
+    GPS     // tem GPS
     Portas int
 }
 ```
 
-Não é herança — não há relação is-a e o tipo embedded é acessível como campo normal `c.Veiculo`. Se dois tipos embedded têm campos com o mesmo nome, o acesso ambíguo é um **erro de compilação**.
+`Carro` não "é" um `Motor` — `Carro` **tem** um motor e **tem** um GPS. Essa abordagem é mais flexível e evita os problemas clássicos de hierarquias rígidas.
 
-## Composição sobre herança
-
-Go favorece **composição** sobre hierarquia. Em vez de criar árvores de herança, combine comportamentos por embedding de interfaces e structs. Um struct pode implementar múltiplas interfaces implicitamente — basta ter os métodos requeridos.
+> **Resumo:** struct = ficha de dados, métodos = comportamento, embedding = composição, struct tags = metadados para bibliotecas. Go troca herança por combinação de peças simples.

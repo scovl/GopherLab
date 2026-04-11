@@ -125,36 +125,152 @@ aplicacao:
 
 ---
 
-`net/http` tem um cliente HTTP completo e configurável. `http.DefaultClient` tem **timeout zero (nunca expira!)** — em produção, sempre use um cliente customizado:
+## Fazendo uma requisição HTTP — passo a passo
+
+Vamos buscar dados de uma API. O fluxo básico em Go é:
+
+1. Fazer a requisição
+2. Verificar se deu erro de rede
+3. **Fechar o body** (sempre!)
+4. Verificar o status HTTP
+5. Decodificar o JSON
 
 ```go
-client := &http.Client{Timeout: 30 * time.Second}
+resp, err := http.Get("https://jsonplaceholder.typicode.com/posts/1")
+if err != nil {
+    fmt.Println("Erro de rede:", err)  // DNS falhou, servidor offline, etc.
+    return
+}
+defer resp.Body.Close()  // SEMPRE fechar — libera a conexão
+
+if resp.StatusCode != 200 {
+    fmt.Println("Status inesperado:", resp.StatusCode)
+    return
+}
+
+var post Post
+json.NewDecoder(resp.Body).Decode(&post)
+fmt.Println(post.Title)
 ```
 
-`http.Get`/`http.Post` são atalhos para o `DefaultClient` — evite-os em serviços de produção. Para controle total (headers, method, body), use `http.NewRequestWithContext(ctx, method, url, body)`.
+### Por que `defer resp.Body.Close()` é obrigatório?
 
-## Responses e JSON
+O corpo da resposta (`resp.Body`) é uma **conexão aberta** com o servidor. Se você não fechar, a conexão fica presa e não volta para o pool. Depois de muitas requests sem fechar, o programa trava com "too many open files".
 
-Responses HTTP retornam `resp.Body` como `io.ReadCloser` — deve ser fechado com `defer resp.Body.Close()` para liberar a conexão de volta ao pool.
+> **Regra:** abriu `resp.Body`? Na linha seguinte, escreva `defer resp.Body.Close()`.
 
-Use `json.NewDecoder(resp.Body).Decode(&v)` para decodificar JSON **diretamente do stream**, sem carregar o body inteiro na memória.
+### A armadilha do status HTTP
 
-> **Atenção:** um status 404 **não** retorna `err != nil` — o erro é `nil` porque a requisição HTTP foi bem-sucedida. Sempre verifique `resp.StatusCode`.
+Essa é uma confusão comum para iniciantes:
 
-## Struct tags JSON
+```go
+resp, err := http.Get("https://api.exemplo.com/nao-existe")
+// err é nil! ✅ A request HTTP funcionou...
+// resp.StatusCode é 404 ❌ ...mas o recurso não existe
+```
+
+`err` só é diferente de `nil` quando a **requisição falha** (DNS, timeout, sem internet). Um 404 ou 500 é uma **resposta válida** — o servidor respondeu, só que com "não encontrei" ou "deu ruim".
+
+| Situação | `err` | `resp.StatusCode` |
+|---|---|---|
+| Servidor offline / sem internet | `!= nil` | — (sem resp) |
+| URL não encontrada (404) | `nil` | 404 |
+| Erro interno do servidor (500) | `nil` | 500 |
+| Tudo certo | `nil` | 200 |
+
+**Sempre verifique os dois:** primeiro `err`, depois `resp.StatusCode`.
+
+## Configurando o cliente HTTP — NUNCA use o padrão em produção
+
+`http.Get()` usa o `http.DefaultClient`, que tem **timeout zero** — ele espera a resposta **para sempre**. Se o servidor travar, seu programa trava junto.
+
+```go
+// ❌ Em produção, NÃO faça isso
+resp, err := http.Get(url)  // espera indefinidamente
+
+// ✅ Crie um cliente com timeout
+client := &http.Client{Timeout: 10 * time.Second}
+resp, err := client.Get(url)  // desiste depois de 10s
+```
+
+Para controle total (headers customizados, método PUT/PATCH/DELETE, body, context):
+
+```go
+req, err := http.NewRequestWithContext(ctx, "POST", url, body)
+req.Header.Set("Authorization", "Bearer meu-token")
+req.Header.Set("Content-Type", "application/json")
+resp, err := client.Do(req)
+```
+
+---
+
+## JSON em Go — struct tags fazem a mágica
+
+Go converte JSON para structs (e vice-versa) usando **struct tags**. São anotações entre crases que dizem ao encoder/decoder como mapear os campos:
 
 ```go
 type User struct {
-    Name string `json:"name"`
-    Age  int    `json:"age,omitempty"`  // omite se zero value
-    Pass string `json:"-"`             // excluído do JSON
+    Name  string `json:"name"`              // campo "name" no JSON
+    Age   int    `json:"age,omitempty"`     // "age" no JSON; omite se for 0
+    Email string `json:"email"`
+    Senha string `json:"-"`                 // NUNCA aparece no JSON
 }
 ```
 
-Tipos não exportados (letra minúscula) são ignorados pelo encoder JSON.
+### Tabela de struct tags JSON
 
-## Tipos especiais
+| Tag | O que faz | Exemplo no JSON |
+|---|---|---|
+| `json:"name"` | Renomeia o campo | `{"name": "Ana"}` |
+| `json:"age,omitempty"` | Omite se for zero value (0, "", false, nil) | Campo não aparece se age=0 |
+| `json:"-"` | Exclui completamente | Nunca sai no JSON |
+| *(sem tag)* | Usa o nome Go com maiúscula | `{"Name": "Ana"}` |
 
-- `json.RawMessage` — armazena JSON bruto sem decodificar; útil para nested JSON dinâmico
-- `json.Number` — preserva números como string, evitando perda de precisão em números grandes
-- Para tipos customizados, implemente `json.Marshaler` / `json.Unmarshaler`
+> **Campos com letra minúscula** (não exportados) são **invisíveis** para o JSON — nem `json.Marshal` nem `json.Unmarshal` os enxergam.
+
+### JSON → struct (decodificar)
+
+Duas formas:
+
+```go
+// Forma 1: do stream (melhor para HTTP — não carrega tudo na memória)
+json.NewDecoder(resp.Body).Decode(&user)
+
+// Forma 2: de um []byte (quando você já tem os dados em memória)
+json.Unmarshal(data, &user)
+```
+
+### struct → JSON (codificar)
+
+```go
+// Compacto
+data, err := json.Marshal(user)
+// {"name":"Ana","age":28,"email":"ana@go.dev"}
+
+// Formatado (bonito para debug)
+data, err := json.MarshalIndent(user, "", "  ")
+// {
+//   "name": "Ana",
+//   "age": 28,
+//   "email": "ana@go.dev"
+// }
+```
+
+### JSON dinâmico — quando você não sabe a estrutura
+
+Às vezes o JSON tem campos que mudam. Para esses casos:
+
+| Tipo | Quando usar |
+|---|---|
+| `map[string]any` | JSON completamente desconhecido |
+| `json.RawMessage` | Um trecho do JSON que você quer decodificar depois |
+| `json.Number` | Números muito grandes que perdem precisão com `float64` |
+
+```go
+// JSON desconhecido → map
+var dados map[string]any
+json.Unmarshal(data, &dados)
+fmt.Println(dados["name"])  // "Ana" (é any, precisa cast)
+```
+
+> **Dica prática:** sempre que possível, use structs com tags. `map[string]any` funciona, mas perde type safety — você descobre erros só em runtime, não na compilação.

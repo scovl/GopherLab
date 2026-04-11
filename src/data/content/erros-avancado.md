@@ -165,36 +165,327 @@ aplicacao:
 
 ---
 
-## errors.Join (Go 1.20+)
+## O problema: e quando dá VÁRIOS erros de uma vez?
 
-Em operações batch e paralelas, a boa prática é não abortar no primeiro erro — processe tudo e reporte todos os erros no final.
+Na aula anterior, vimos como tratar **um** erro por vez. Mas e se você precisa processar **100 linhas de um CSV** e 5 delas têm erro?
 
 ```go
-errs := []error{}
-for _, item := range items {
-    if err := process(item); err != nil {
-        errs = append(errs, err)
+// ❌ Abordagem ingênua: para no primeiro erro
+for _, linha := range linhas {
+    if err := processar(linha); err != nil {
+        return err  // Parou na linha 3... e as outras 97?
     }
 }
-return errors.Join(errs...)  // retorna nil se todos os itens forem nil
 ```
 
-`errors.Is` e `errors.As` atravessam a árvore de erros joinados.
+O chefe quer saber **TODOS** os problemas, não só o primeiro. Imagine entregar um relatório que diz "tem erro na linha 3" — o chefe corrige, roda de novo, e descobre "tem erro na linha 7". E de novo, e de novo...
 
-## panic e recover
+> **Analogia:** é como um professor que corrige uma prova e **para na primeira questão errada**. O aluno prefere saber TODAS as questões erradas de uma vez!
 
-`panic(v)` para a execução normal e começa a desenrolar a call stack, executando funções deferridas em ordem LIFO. Se não for recuperado, o runtime imprime a stack trace e termina o programa. Apenas a goroutine que panicou é afetada no unwind — mas se chegar ao topo sem `recover`, **o programa todo termina**.
+---
 
-`recover()` captura o valor passado ao `panic` — mas **apenas se chamado diretamente dentro de uma função deferrida**. Fora de `defer`, `recover()` retorna `nil`.
+## `errors.Join` — juntando vários erros num só (Go 1.20+)
 
-O padrão idiomático em servidores HTTP: cada handler executa com um `recover` para evitar que um panic em um request derrube o servidor inteiro.
+A solução é **coletar** todos os erros e juntar no final:
 
-> **Go 1.21:** `panic(nil)` é equivalente a `panic(new(runtime.PanicNilError))` — código que checa `recover() != nil` precisa também tratar `*runtime.PanicNilError`.
+```go
+func processarLote(linhas []string) error {
+    var erros []error  // sacola de erros
 
-## Erros em produção
+    for _, linha := range linhas {
+        if err := processar(linha); err != nil {
+            erros = append(erros, err)  // joga na sacola
+            // NÃO faz return! continua processando
+        }
+    }
 
-- `github.com/rotisserie/eris` — wrapping com stack trace
-- `go.uber.org/multierr` — multiple errors
-- `log/slog` (stdlib Go 1.21+) — logging estruturado nativo
+    return errors.Join(erros...)  // junta tudo num erro só
+    // Se a sacola estiver vazia → retorna nil (sem erro!)
+}
+```
 
-Use erros padrão para lógica de negócio; reserve `panic` para **invariantes violados** (bugs no código do programador, não erros de input).
+### O que `errors.Join` retorna?
+
+| Situação | Retorno |
+|---|---|
+| Sacola vazia (nenhum erro) | `nil` |
+| 1 erro na sacola | Erro com 1 mensagem |
+| 3 erros na sacola | Erro com as 3 mensagens separadas por `\n` |
+
+```go
+err := errors.Join(
+    errors.New("linha 3: campo vazio"),
+    errors.New("linha 7: número inválido"),
+    errors.New("linha 15: email sem @"),
+)
+fmt.Println(err)
+// linha 3: campo vazio
+// linha 7: número inválido
+// linha 15: email sem @
+```
+
+### `errors.Is` e `errors.As` funcionam com Join!
+
+```go
+var ErrCampoVazio = errors.New("campo vazio")
+
+erros := errors.Join(
+    fmt.Errorf("linha 3: %w", ErrCampoVazio),
+    errors.New("linha 7: número inválido"),
+)
+
+// Procura dentro de TODOS os erros joinados
+errors.Is(erros, ErrCampoVazio)  // true ✅
+```
+
+> **Internamente:** `errors.Join` cria um erro que implementa `Unwrap() []error` (retorna um **slice**, não um único erro). O `errors.Is`/`errors.As` sabe percorrer esse slice automaticamente.
+
+---
+
+## Exemplo real: validador de CSV
+
+```go
+type LinhaErro struct {
+    Linha int
+    Erro  error
+}
+
+func (e *LinhaErro) Error() string {
+    return fmt.Sprintf("linha %d: %v", e.Linha, e.Erro)
+}
+
+func (e *LinhaErro) Unwrap() error { return e.Erro }
+
+func processarCSV(dados string) error {
+    linhas := strings.Split(dados, "\n")
+    var erros []error
+
+    for i, linha := range linhas {
+        if err := validar(linha); err != nil {
+            // Embrulha com número da linha
+            erros = append(erros, &LinhaErro{Linha: i + 1, Erro: err})
+        }
+    }
+
+    return errors.Join(erros...)
+}
+
+// Quem chamou pode extrair detalhes:
+err := processarCSV(dados)
+var le *LinhaErro
+if errors.As(err, &le) {
+    fmt.Printf("Primeiro erro: linha %d\n", le.Linha)
+}
+```
+
+---
+
+## `panic` e `recover` — o botão de emergência
+
+### Primeiro: `error` vs `panic`
+
+| | `error` (normal) | `panic` (emergência) |
+|---|---|---|
+| Quando usar | Coisas que **podem** dar errado | Coisas que **nunca deveriam** acontecer |
+| Exemplos | Arquivo não existe, rede caiu, input inválido | Índice fora do array, nil pointer, bug no código |
+| O que acontece | Retorna erro, programa continua | **Para tudo** e crasha |
+| É esperado? | Sim — faz parte do fluxo | Não — é sinal de **bug** |
+
+> **Analogia:** `error` é como o **farol amarelo** — "atenção, algo deu errado, trate com cuidado". `panic` é como o **alarme de incêndio** — "EVACUAR! Algo está muito errado!".
+
+### Como `panic` funciona — passo a passo
+
+```go
+func main() {
+    fmt.Println("1 - antes")
+    panic("BOOM!")              // 💥 para aqui
+    fmt.Println("2 - depois")   // ❌ nunca executa
+}
+// Saída:
+// 1 - antes
+// panic: BOOM!
+// goroutine 1 [running]:
+// main.main()
+//     main.go:5 +0x...
+```
+
+O que acontece internamente:
+
+```
+1. panic("BOOM!") é chamado
+2. A função atual PARA imediatamente
+3. Todas as funções defer da função atual EXECUTAM
+4. Volta para quem chamou — repete os passos 2-3
+5. Continua subindo a call stack...
+6. Se ninguém faz recover → PROGRAMA MORRE com stack trace
+```
+
+### `defer` ainda roda durante panic!
+
+```go
+func main() {
+    defer fmt.Println("3 - defer executa!")  // ✅ roda mesmo com panic
+    fmt.Println("1 - antes")
+    panic("BOOM!")
+    fmt.Println("2 - depois")  // ❌ nunca executa
+}
+// 1 - antes
+// 3 - defer executa!
+// panic: BOOM!
+```
+
+Isso é **crucial** para a próxima parte...
+
+---
+
+## `recover` — pegando o alarme de incêndio
+
+`recover()` é a única forma de **impedir** que um `panic` mate o programa:
+
+```go
+func funcaoPerigosa() {
+    panic("BOOM!")
+}
+
+func funcaoSegura() {
+    defer func() {
+        if r := recover(); r != nil {
+            fmt.Println("Peguei o panic:", r)
+        }
+    }()
+
+    funcaoPerigosa()  // panics, mas recover pega
+    fmt.Println("depois do panic")  // ❌ não executa
+}
+
+func main() {
+    funcaoSegura()
+    fmt.Println("programa continua!")  // ✅ executa normalmente
+}
+// Peguei o panic: BOOM!
+// programa continua!
+```
+
+### As 3 regras do `recover`
+
+| Regra | Detalhe |
+|---|---|
+| Só funciona dentro de `defer` | Fora de `defer`, sempre retorna `nil` |
+| Só pega panic da **mesma goroutine** | Não pega panic de outra goroutine |
+| A função que panicou **não continua** | Código após o panic naquela função é perdido |
+
+```go
+// ❌ NÃO funciona — recover fora de defer
+func errado() {
+    r := recover()  // sempre nil — inútil!
+    funcaoPerigosa()
+}
+
+// ✅ Funciona — recover dentro de defer
+func correto() {
+    defer func() {
+        if r := recover(); r != nil {
+            fmt.Println("peguei:", r)
+        }
+    }()
+    funcaoPerigosa()
+}
+```
+
+---
+
+## Uso real: protegendo um servidor HTTP
+
+Se um handler de HTTP faz `panic`, **o servidor inteiro morre**. A solução é um middleware de recover:
+
+```go
+func recoverMiddleware(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        defer func() {
+            if rec := recover(); rec != nil {
+                // Loga o erro (em produção, use slog)
+                log.Printf("PANIC em %s: %v", r.URL.Path, rec)
+                // Retorna 500 para o cliente
+                http.Error(w, "Erro interno", http.StatusInternalServerError)
+            }
+        }()
+        next.ServeHTTP(w, r)  // chama o handler real
+    })
+}
+```
+
+> **Traduzindo:** cada request roda com um "paraquedas" (recover). Se o handler explodir, o paraquedas abre, o cliente recebe 500, e o servidor **continua vivo** para atender outros requests.
+
+---
+
+## Quando usar `panic` vs `error` — regra simples
+
+```
+Pergunta: "isso é culpa do USUÁRIO ou do PROGRAMADOR?"
+
+→ Culpa do usuário (input ruim, rede caiu, arquivo não existe):
+   return error  ✅
+
+→ Culpa do programador (bug, invariante violada, impossível acontecer):
+   panic()  ✅ (mas é raro!)
+```
+
+| Situação | Use |
+|---|---|
+| Arquivo não encontrado | `return err` |
+| JSON inválido do cliente | `return err` |
+| Index fora do array (bug!) | `panic` (Go faz automaticamente) |
+| nil pointer (bug!) | `panic` (Go faz automaticamente) |
+| Template HTML não parseia na inicialização | `template.Must(...)` → panic |
+| Regex inválida na inicialização | `regexp.MustCompile(...)` → panic |
+
+> Os `Must...` da stdlib fazem `panic` porque são chamados na **inicialização** — se o template/regex está errado, é bug do programador, e o programa nem deveria iniciar.
+
+---
+
+## Go 1.21: `panic(nil)` mudou!
+
+Antes do Go 1.21:
+```go
+defer func() {
+    r := recover()
+    if r != nil {
+        // panic(nil) NÃO entrava aqui! r era nil.
+    }
+}()
+panic(nil)  // recover() retornava nil → parecia que não houve panic
+```
+
+Depois do Go 1.21:
+```go
+panic(nil)  // agora é equivalente a panic(new(runtime.PanicNilError))
+// recover() retorna *runtime.PanicNilError → r != nil é true ✅
+```
+
+Na prática, isso raramente afeta seu código. Mas é bom saber.
+
+---
+
+## Bibliotecas para erros em produção
+
+| Biblioteca | O que faz | Quando usar |
+|---|---|---|
+| `errors` (stdlib) | Join, Is, As, wrapping | **Sempre** — comece aqui |
+| `log/slog` (stdlib 1.21+) | Logging estruturado | Logar erros com contexto (JSON, nível) |
+| `github.com/rotisserie/eris` | Erros com **stack trace** | Quando precisa saber exatamente onde o erro nasceu |
+| `go.uber.org/multierr` | Multi-erros (pré-Go 1.20) | Projetos que ainda não usam Go 1.20+ |
+
+> **Dica:** comece com a stdlib (`errors` + `fmt.Errorf` + `errors.Join`). Só adicione bibliotecas externas quando **sentir falta** de algo específico.
+
+---
+
+## Resumo — o que usar em cada situação
+
+| Preciso de... | Use |
+|---|---|
+| Juntar vários erros em um | `errors.Join(erros...)` |
+| Processar batch sem parar no primeiro erro | Colete em `[]error`, depois `errors.Join` |
+| Proteger servidor de panic | `defer func() { recover() }()` no middleware |
+| Sinalizar bug impossível | `panic("impossível: ...")` (raro!) |
+| Tratar erro esperado | `return error` (o jeito normal) |
+| Forçar panic na inicialização | `template.Must(...)`, `regexp.MustCompile(...)` |

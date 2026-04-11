@@ -68,9 +68,9 @@ aplicacao:
     }
 ---
 
-O **Hello, World!** é uma tradição em todas as linguagens de programação: o primeiro programa que todo iniciante escreve. Ele imprime a frase "Hello, World!" na tela — simples assim. Mas o valor real não é a frase: é o que ele revela sobre a estrutura básica da linguagem.
+O **Hello, World!** é o primeiro programa que todo programador escreve em uma linguagem nova. Ele faz uma coisa só: imprime uma frase na tela. Parece bobo, mas cada linha revela algo importante sobre como Go funciona.
 
-## A estrutura do programa
+## O programa completo
 
 ```go
 package main
@@ -82,33 +82,70 @@ func main() {
 }
 ```
 
-Toda linha aqui tem um propósito claro.
+São só 7 linhas e o programa já roda. Vamos entender cada uma.
 
-## `package main`
+## Linha 1: `package main`
 
-Todo arquivo Go pertence a um **pacote**. O pacote `main` é o ponto de partida: indica ao compilador que este arquivo produz um **executável**. Outros pacotes (como `fmt`) são bibliotecas não têm `func main`, não rodam sozinhos.
+Todo arquivo Go começa dizendo a qual **pacote** ele pertence. Pense num pacote como uma pasta que agrupa código relacionado.
 
-## `import "fmt"`
+O pacote `main` é especial — ele diz ao Go: "isso aqui é um **programa executável**". Se o pacote tiver outro nome (como `fmt` ou `math`), ele é uma **biblioteca** que outros programas usam, mas não roda sozinho.
 
-Importa o pacote `fmt` da biblioteca padrão. Go não permite imports não usados — se você importar e não usar, **não compila**. Isso é intencional: a linguagem foi projetada para não ter código morto.
+> **Resumo:** `package main` = "sou um programa que pode rodar".
 
-## `func main()`
+## Linha 3: `import "fmt"`
 
-A função `main` é a porta de entrada de qualquer programa Go. A execução começa aqui e termina quando `main` retorna. Você pode ter centenas de funções no seu programa, mas o Go sempre começa por `main`.
+Essa linha traz o pacote `fmt` (abreviação de "format") para dentro do seu programa. É nele que mora a função `Println` que usamos para imprimir na tela.
 
-## `fmt.Println`
-
-A notação `pacote.Identificador` é a forma padrão de acessar qualquer coisa de outro pacote. `fmt.Println` significa: "função `Println` do pacote `fmt`". Essa notação é usada para funções, variáveis, tipos e constantes — e nunca muda.
-
-`Println` é uma função *variádica*: aceita qualquer número de argumentos de qualquer tipo, inserindo um espaço entre eles e uma quebra de linha no final.
-
-## O identificador em branco `_`
-
-Go exige que toda variável declarada seja usada. Quando uma função retorna múltiplos valores e você quer descartar um deles, usa o `_` (underline):
+Go é rigoroso aqui: se você importar um pacote e **não usar nenhuma função dele**, o compilador **recusa compilar**. Nada de código morto! Isso pode parecer chato no começo, mas mantém o código limpo.
 
 ```go
-n, _ := fmt.Println("Hello")  // descarta o erro, mantém n (bytes escritos)
+import "fmt"      // ✅ OK — usamos fmt.Println
+import "math"     // ❌ Erro — importou mas não usou nada de math
 ```
 
-O `_` significa: "recebo esse valor, mas não vou usá-lo". É o jeito idiomático de dizer ao compilador que o descarte é intencional.
+## Linha 5: `func main()`
+
+Essa é a **porta de entrada** do programa. Quando você roda o executável, o Go procura a função `main` dentro do pacote `main` e começa a execução por aqui.
+
+- O programa começa na primeira linha de `main`
+- Quando a última linha de `main` termina, o programa acaba
+- Pode haver centenas de outras funções no código, mas tudo começa aqui
+
+> **Analogia:** `func main()` é como a porta da frente de uma casa. Não importa quantos cômodos existam — você sempre entra pela porta da frente.
+
+## Linha 6: `fmt.Println("Hello, World!")`
+
+Aqui está a ação! Vamos decompor:
+
+| Parte | Significado |
+|---|---|
+| `fmt` | O pacote que importamos |
+| `.` | Separador — "pegue algo de dentro do pacote" |
+| `Println` | A função que imprime texto + quebra de linha |
+| `("Hello, World!")` | O texto que queremos imprimir |
+
+Essa notação `pacote.Função` é **sempre assim** em Go. Não importa se é `fmt.Println`, `math.Sqrt` ou `strings.ToUpper` — o padrão é o mesmo.
+
+### `Println` aceita qualquer coisa
+
+`Println` é uma função **variádica** — aceita qualquer número de argumentos de qualquer tipo. Ela coloca um espaço entre eles e uma quebra de linha no final:
+
+```go
+fmt.Println("Go", 2009, true)
+// Saída: Go 2009 true
+```
+
+Não precisa converter nada — ela se vira com texto, números e booleanos.
+
+## Bônus: o `_` (underline) — "não quero esse valor"
+
+Go exige que toda variável declarada seja usada. Mas às vezes uma função retorna dois valores e você só quer um deles. Para isso, use `_`:
+
+```go
+n, _ := fmt.Println("Hello")  // _ descarta o erro, n guarda quantos bytes foram escritos
+```
+
+O `_` diz ao compilador: "sei que tem um valor aqui, mas não preciso dele". É como assinar um recibo sem ler — você reconhece que recebeu, mas não vai usar.
+
+> **Dica:** por enquanto, não se preocupe com o `_`. Você vai encontrá-lo muito quando começar a lidar com **erros** (que é o próximo grande tema do Go).
 

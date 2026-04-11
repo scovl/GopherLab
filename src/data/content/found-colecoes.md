@@ -105,44 +105,167 @@ aplicacao:
     		return pares[i].contagem > pares[j].contagem
     	})
     	for _, p := range pares {
-    		fmt.Printf("%-15s %d
-    ", p.palavra, p.contagem)
+    	fmt.Printf("%-15s %d\n", p.palavra, p.contagem)
     	}
     }
 
 ---
 
-## Arrays
+Go tem três estruturas principais para guardar coleções de dados. Vamos do mais simples ao mais poderoso.
 
-Arrays têm tamanho fixo que é **parte do tipo**: `[3]int` e `[4]int` são tipos distintos e incompatíveis. Arrays são **value types** — atribuir copia todos os elementos. Use arrays quando o tamanho é fixo e conhecido (ex: buffers SHA256 `[32]byte`). Para a maioria dos casos, use slices.
+## Arrays — tamanho fixo, quase nunca usado
 
-## Slices
-
-Slices são referências dinâmicas a arrays subjacentes com **três campos internos**: ponteiro para o array, `len` (elementos usados) e `cap` (capacidade do array a partir do ponteiro). Modificar `s[i]` modifica o array subjacente — sub-slices compartilham memória.
-
-`append()` sempre retorna um novo slice; quando `len == cap`, aloca novo array e copia:
-- Para slices com menos de 256 elementos: **dobra** a capacidade
-- Para slices maiores: cresce **~25%**
-
-Sempre reatribua: `s = append(s, item)`. Use `make([]T, len, cap)` para pré-alocar capacidade e evitar realocações.
-
-## Maps
-
-Maps são hash tables `key→value`. Chaves devem ser comparáveis com `==` (int, string, structs sem campos slice/map/função). Passar map para função passa a **referência** — modificações são visíveis no caller.
+Um array é uma lista com **tamanho fixo decidido na hora da criação**. O tamanho faz parte do tipo — `[3]int` e `[4]int` são tipos **completamente diferentes**:
 
 ```go
-val, ok := m[key]  // comma-ok: distingue "chave ausente" de "chave com valor zero"
-delete(m, key)     // seguro mesmo se a chave não existir
+var notas [3]int = [3]int{10, 8, 9}
+fmt.Println(notas[0])  // 10
+fmt.Println(len(notas)) // 3
 ```
 
-A ordem de iteração em maps é **intencionalmente aleatória** a cada execução.
+Arrays são copiados inteiros quando você atribui ou passa para funções:
 
-## nil vs zero value
+```go
+a := [3]int{1, 2, 3}
+b := a        // cópia completa — b é independente
+b[0] = 999
+fmt.Println(a[0])  // 1 — não mudou!
+```
 
-| Tipo | nil válido? | Operações seguras em nil |
+> **Na prática:** arrays são raros no código Go do dia-a-dia. Para quase tudo, use **slices**.
+
+## Slices — a lista dinâmica do Go
+
+Um **slice** é como um array que pode crescer. É a estrutura de dados mais usada em Go:
+
+```go
+frutas := []string{"maçã", "banana", "uva"}  // note: sem número nos colchetes
+frutas = append(frutas, "manga")              // cresceu!
+fmt.Println(frutas)  // [maçã banana uva manga]
+```
+
+### Como um slice funciona por dentro
+
+Um slice é na verdade uma "janela" sobre um array escondido. Ele guarda 3 informações:
+
+| Campo | O que é | Exemplo |
 |---|---|---|
-| slice | ✅ | `len`, `cap`, `append` |
-| map | ✅ | leitura (retorna zero value) |
-| map | ❌ | **escrita causa panic** |
+| **Ponteiro** | Onde o array começa na memória | → `[maçã, banana, uva, manga, _, _]` |
+| **len** | Quantos elementos estão em uso | 4 |
+| **cap** | Quantos cabem antes de precisar crescer | 6 |
 
-`make()` cria slices, maps e channels com estado inicial válido.
+```go
+s := make([]int, 3, 10)  // len=3, cap=10
+fmt.Println(len(s))       // 3
+fmt.Println(cap(s))       // 10
+```
+
+### O bug número 1 com slices: esquecer de reatribuir
+
+`append` devolve um **novo slice**. Se você não guardar o resultado, perde o elemento adicionado:
+
+```go
+// ❌ Errado — element perdido!
+frutas := []string{"maçã"}
+append(frutas, "banana")    // resultado jogado fora
+
+// ✅ Correto
+frutas = append(frutas, "banana")
+```
+
+### Sub-slices compartilham memória
+
+Quando você fatia um slice, o resultado aponta para o **mesmo array**:
+
+```go
+nums := []int{10, 20, 30, 40, 50}
+pedaco := nums[1:3]      // [20, 30]
+pedaco[0] = 999
+fmt.Println(nums[1])     // 999 — o original mudou!
+```
+
+Se isso te assusta, use `copy` para criar uma cópia independente:
+
+```go
+copia := make([]int, len(pedaco))
+copy(copia, pedaco)  // copia é independente agora
+```
+
+## Maps — dicionário chave→valor
+
+Um **map** é como um dicionário: você busca um **valor** usando uma **chave**:
+
+```go
+idades := map[string]int{
+    "Alice": 30,
+    "Bob":   25,
+}
+fmt.Println(idades["Alice"])  // 30
+```
+
+### Operações básicas
+
+```go
+// Adicionar ou atualizar
+idades["Carol"] = 28
+
+// Remover (seguro mesmo se a chave não existir)
+delete(idades, "Bob")
+
+// Verificar se uma chave existe
+idade, existe := idades["Dave"]
+if !existe {
+    fmt.Println("Dave não encontrado")
+}
+```
+
+O padrão `valor, ok := mapa[chave]` se chama **comma-ok**. É essencial para distinguir "chave não existe" de "chave existe com valor zero":
+
+```go
+notas := map[string]int{"Ana": 0, "Bia": 8}
+
+nota := notas["Ana"]           // 0 — mas ela existe ou não?
+nota, ok := notas["Ana"]       // ok=true → existe, nota é 0 de verdade
+nota, ok = notas["Carlos"]     // ok=false → não existe, nota é 0 por padrão
+```
+
+### Cuidados com maps
+
+**A ordem é aleatória.** Se você percorrer um map com `for range`, a ordem muda a cada execução do programa. Isso é intencional.
+
+**Maps são "referências" por natureza.** Passar um map para uma função permite que ela modifique o original:
+
+```go
+func dobrarIdades(m map[string]int) {
+    for k := range m {
+        m[k] *= 2  // modifica o map original!
+    }
+}
+```
+
+## `nil` — quando a coleção não existe
+
+Uma variável slice ou map sem inicializar vale `nil`. Algumas operações são seguras, outras causam panic:
+
+| Operação | Slice nil | Map nil |
+|---|---|---|
+| `len(x)` | ✅ retorna 0 | ✅ retorna 0 |
+| Ler: `x[key]` | ❌ panic | ✅ retorna zero value |
+| `append(x, item)` | ✅ funciona | — (maps não têm append) |
+| Escrever: `x[key] = val` | ❌ panic | ❌ **panic!** |
+
+> **Regra prática:** para slices, `append` num slice nil funciona — ele cria o array para você. Para maps, **sempre inicialize** com `make(map[string]int{})` ou literal antes de escrever.
+
+```go
+// ✅ Seguro
+var s []int
+s = append(s, 1)  // cria o array automaticamente
+
+// ❌ Panic!
+var m map[string]int
+m["chave"] = 1  // 💥 panic: assignment to entry in nil map
+
+// ✅ Seguro
+m = make(map[string]int)
+m["chave"] = 1  // agora sim
+```

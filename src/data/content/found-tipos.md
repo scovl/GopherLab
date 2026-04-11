@@ -122,28 +122,105 @@ aplicacao:
 
 ---
 
-Go é estaticamente tipado com **17 tipos básicos embutidos**: 1 booleano (`bool`), 11 inteiros (`int8`, `uint8`/`byte`, `int16`, `uint16`, `int32`/`rune`, `uint32`, `int64`, `uint64`, `int`, `uint`, `uintptr`), 2 de ponto flutuante (`float32`, `float64`), 2 complexos (`complex64`, `complex128`) e 1 string. `byte` é alias de `uint8` e `rune` é alias de `int32`. Os tipos `int` e `uint` têm tamanho dependente da arquitetura: 4 bytes em sistemas 32-bit e 8 bytes em sistemas 64-bit.
+Em Go, **todo valor tem um tipo definido antes do programa rodar**. Isso se chama **tipagem estática** — o compilador verifica se você está usando os tipos certos e avisa na hora se algo não bate. Você nunca vai descobrir um erro de tipo só quando o programa estiver rodando em produção.
 
-## Variáveis e constantes
+## Os tipos básicos do Go
 
-Variáveis são declaradas com `var` (qualquer escopo, zero value se não inicializada) ou `:=` (inferência de tipo, **apenas dentro de funções**). O compilador recusa variáveis locais declaradas mas não usadas. Constantes usam `const`; são substituídas pelo compilador em compiletime e não ocupam endereço de memória.
+Go tem **17 tipos embutidos** organizados em 5 famílias:
 
-## iota
+| Família | Tipos | Exemplo |
+|---|---|---|
+| Booleano | `bool` | `true`, `false` |
+| Inteiros | `int`, `int8`, `int16`, `int32`, `int64`, `uint`, `uint8`, `uint16`, `uint32`, `uint64`, `uintptr` | `42`, `-7` |
+| Ponto flutuante | `float32`, `float64` | `3.14` |
+| Complexos | `complex64`, `complex128` | `1+2i` |
+| Texto | `string` | `"Olá"` |
 
-`iota` é um gerador predeclarado: começa em `0` na primeira especificação de cada bloco `const` e incrementa 1 a cada linha. O mecanismo de autocomplete replica a expressão da linha anterior — por isso `Readable = 1 << iota` em linhas subsequentes funciona sem repetir a expressão:
+Dois atalhos úteis: `byte` é o mesmo que `uint8` (um byte de dado) e `rune` é o mesmo que `int32` (um caractere Unicode).
+
+> **Dica prática:** na dúvida, use `int` para inteiros e `float64` para decimais — são os mais comuns no dia-a-dia.
+
+## Variáveis: `var` e `:=`
+
+Existem **duas formas** de criar variáveis:
+
+```go
+var nome string = "Go"   // forma longa — funciona em qualquer lugar
+idade := 15              // forma curta — só funciona dentro de funções
+```
+
+A forma curta `:=` é a mais usada no dia-a-dia. O compilador **adivinha o tipo** pelo valor da direita (isso se chama *inferência de tipo*).
+
+**Regra importante:** se você declarar uma variável e **não usar**, o compilador **não compila**. Isso evita sujeira no código.
+
+## Constantes e `const`
+
+Constantes são valores que **nunca mudam**:
+
+```go
+const pi = 3.14159
+const versao = "1.0"
+```
+
+Diferente de variáveis, constantes são resolvidas **em tempo de compilação** — o compilador substitui o valor diretamente no código final.
+
+## `iota` — o contador automático
+
+Quando você precisa de uma sequência de constantes (como um enum), `iota` gera os números para você. Ele começa em `0` e **soma 1 a cada linha** dentro do bloco `const`:
 
 ```go
 const (
-    Readable  = 1 << iota  // 1
-    Writable               // 2
-    Executable             // 4
+    Pendente  = iota  // 0
+    Pago              // 1
+    Enviado           // 2
+    Entregue          // 3
 )
 ```
 
-## Zero values e conversões
+Se quiser valores mais elaborados, a expressão é **copiada automaticamente** para as linhas seguintes:
 
-Todo tipo tem **zero value**: `0` (numéricos), `""` (string), `false` (bool), `nil` (ponteiros, slices, maps, channels, funções). Conversões são sempre **explícitas**: `float64(i)`, `int(f)` (trunca a parte fracionária).
+```go
+const (
+    Readable   = 1 << iota  // 1  (bit 0)
+    Writable                // 2  (bit 1)
+    Executable              // 4  (bit 2)
+)
+```
 
-> **Armadilha:** `string(65)` retorna `"A"` (code point Unicode 65), não `"65"`. Para converter inteiro em string decimal, use `strconv.Itoa()` ou `fmt.Sprintf("%d", n)`.
+## Zero values — nada fica "indefinido"
 
-Variáveis de escopo interno podem **sombrear** variáveis externas com mesmo nome — uma armadilha comum com `:=` em blocos `if`/`for`.
+Em Go, toda variável **nasce com um valor padrão**, chamado *zero value*. Você nunca vai encontrar lixo de memória:
+
+| Tipo | Zero value |
+|---|---|
+| `int`, `float64` | `0` |
+| `string` | `""` (string vazia) |
+| `bool` | `false` |
+| Ponteiros, slices, maps | `nil` |
+
+## Conversões — sempre explícitas
+
+Go **não converte tipos sozinho**. Se você tem um `int` e precisa de um `float64`, tem que pedir:
+
+```go
+idade := 25
+f := float64(idade)  // int → float64 ✅
+n := int(3.7)        // float64 → int = 3 (trunca, não arredonda!)
+```
+
+> **Armadilha clássica:** `string(65)` **não** retorna `"65"`. Retorna `"A"` — porque 65 é o código Unicode da letra A! Para converter número em texto, use `strconv.Itoa(65)` → `"65"`.
+
+## Cuidado com o sombreamento de variáveis
+
+Quando você usa `:=` dentro de um `if` ou `for`, pode **criar uma variável nova** que esconde a de fora sem querer:
+
+```go
+x := 10
+if true {
+    x := 20  // ⚠️ nova variável x, a de fora continua valendo 10!
+    fmt.Println(x) // 20
+}
+fmt.Println(x) // 10 — surpresa?
+```
+
+Isso se chama *shadowing*. Quando quiser **modificar** a variável de fora, use `=` em vez de `:=`.

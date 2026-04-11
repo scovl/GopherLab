@@ -103,27 +103,119 @@ aplicacao:
 
 ---
 
-Packages organizam código — cada diretório é um package; minúscula é privado ao package. Módulos (`go.mod`) gerenciam dependências com semantic versioning.
+## O que é um package?
 
-## Comandos essenciais
+Um **package** é simplesmente uma pasta com arquivos `.go`. Todos os arquivos da mesma pasta pertencem ao mesmo package. É a forma do Go de organizar código em peças separadas — como gavetas de um armário.
+
+```
+meu-projeto/
+├── main.go          ← package main (programa começa aqui)
+├── utils/
+│   └── texto.go     ← package utils
+└── models/
+    └── usuario.go   ← package models
+```
+
+Para usar algo de outro package, você **importa** ele:
+
+```go
+import "meu-projeto/utils"
+
+fmt.Println(utils.Formatar("olá"))
+```
+
+## A regra mais importante: maiúscula = público
+
+Go não tem `public`, `private` ou `protected`. A visibilidade é decidida pela **primeira letra** do nome:
+
+| Primeira letra | Visibilidade | Exemplo |
+|---|---|---|
+| **Maiúscula** | Exportado — qualquer package pode usar | `Saudar()`, `Nome` |
+| **minúscula** | Privado — só dentro do próprio package | `normalizar()`, `idade` |
+
+```go
+func Saudar(nome string) string {  // ✅ outros packages conseguem chamar
+    return "Olá, " + nome
+}
+
+func normalizar(s string) string { // 🔒 só o próprio package usa
+    return strings.ToLower(s)
+}
+```
+
+> **Dica:** se você tenta usar `utils.normalizar()` de fora, o compilador dá erro. Simples assim.
+
+## O que é um módulo?
+
+Um **módulo** é o "projeto inteiro" — pode conter vários packages. Ele é definido pelo arquivo `go.mod` na raiz:
 
 ```bash
-go mod init github.com/user/repo  # cria módulo
-go mod tidy                       # remove deps não usadas, adiciona faltantes
-go get github.com/pkg@v1.2.3      # adiciona/atualiza dependência
+go mod init github.com/seu-usuario/meu-projeto
 ```
 
-## Visibilidade
+Isso cria o `go.mod`, que:
+- Dá um **nome** ao seu módulo (o caminho de importação)
+- Lista as **dependências externas** (bibliotecas de terceiros)
+- Define a **versão do Go** usada
 
-- `internal/` cria packages visíveis **apenas ao módulo pai** — útil para código que não deve ser importado por outros módulos
-- Go **proíbe imports circulares** — o compilador recusa dois packages que se importam mutuamente
+## Três comandos que você vai usar sempre
 
-## Organização típica
+```bash
+# 1. Criar um módulo novo
+go mod init github.com/user/repo
+
+# 2. Limpar dependências (adiciona faltantes, remove não usadas)
+go mod tidy
+
+# 3. Adicionar uma biblioteca externa
+go get github.com/alguma/lib@v1.2.3
+```
+
+> **Regra do Go:** se você importar um package e **não usar nenhuma função dele**, o código **não compila**. Da mesma forma, variáveis declaradas e não usadas dão erro. Go não tolera lixo.
+
+## `internal/` — a pasta "só minha"
+
+Se você colocar código dentro de uma pasta chamada `internal/`, apenas o **seu próprio módulo** pode importar esse package. Outros projetos que dependem do seu módulo são bloqueados pelo compilador:
 
 ```
-cmd/          # pontos de entrada (main packages)
-internal/     # código privado ao módulo
-pkg/          # código reutilizável (opcional)
+meu-projeto/
+├── internal/
+│   └── db/          ← 🔒 SÓ meu-projeto pode importar isso
+│       └── conn.go
+├── pkg/
+│   └── utils/       ← ✅ qualquer um pode importar
+│       └── texto.go
+└── cmd/
+    └── server/      ← ponto de entrada (package main)
+        └── main.go
 ```
 
-Cada diretório tem um único package name (exceto arquivos `_test.go` que podem usar `package foo_test`).
+Isso é ótimo para esconder detalhes internos que podem mudar sem aviso.
+
+## Imports circulares — proibidos
+
+Se o package `A` importa o package `B`, o package `B` **não pode importar** `A`. O compilador recusa. Isso obriga você a pensar na organização e evita dependências espagete.
+
+Se dois packages precisam se comunicar, a solução é criar um **terceiro package** ou usar **interfaces**.
+
+## Estrutura típica de um projeto Go
+
+```
+meu-projeto/
+├── go.mod              ← define o módulo e dependências
+├── go.sum              ← checksums das dependências (gerado automaticamente)
+├── cmd/
+│   └── server/
+│       └── main.go     ← ponto de entrada: package main, func main()
+├── internal/
+│   ├── service/        ← lógica de negócio (privada)
+│   └── repository/     ← acesso a dados (privado)
+└── pkg/
+    └── utils/          ← utilitários reutilizáveis (público)
+```
+
+- **`cmd/`** — onde ficam os `main.go` (pode ter vários programas)
+- **`internal/`** — código que só o seu projeto usa
+- **`pkg/`** — código que outros projetos podem importar (opcional)
+
+> **Pra quem vem de outras linguagens:** package em Go ≈ módulo em Python, namespace em C#. A diferença é que Go **obriga** organização por pastas e proíbe imports cíclicos — sem atalhos.

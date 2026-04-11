@@ -80,37 +80,113 @@ aplicacao:
     }
 ---
 
-Aqui começa a parte prática do curso. E a boa notícia: você não precisa instalar nada. O AprendaGo já tem um [playground embutido](https://play.golang.org/) — basta clicar na aba Experimentação e também na Aplicação que seu código é compilado e executado na hora, direto no browser.
+Aqui começa a parte prática do curso. E a boa notícia: **você não precisa instalar nada**. O AprendaGo tem um playground embutido — basta clicar na aba **Experimentação** e seu código é compilado e executado na hora, direto no browser.
 
-> **Nota**: Diferentemente da abra Experimentação que usa de fato o playground embutido, a aba Aplicação é um ambiente de desenvolvimento mais completo, com suporte a múltiplos arquivos, testes unitários e até mesmo módulos. Ele roda um container Linux com Go instalado, então é como se você tivesse uma máquina virtual na nuvem para programar.
+> **Nota:** A aba **Aplicação** é um ambiente mais completo, com suporte a múltiplos arquivos e testes. Ele roda um container Linux com Go instalado — como uma máquina virtual na nuvem para você programar.
 
-## Variáveis em Go
+## O que é uma variável?
 
-Uma variável é um nome que aponta para um valor na memória. Em Go, existem duas formas de declarar:
+Uma variável é uma **caixinha com nome** onde você guarda um valor. Você escolhe o nome, coloca um valor dentro, e depois pode usar esse nome para acessar o valor.
 
 ```go
-var nome string = "Go"   // declaração explícita — tipo visível
-nome := "Go"             // declaração curta — tipo inferido pelo compilador
+nome := "Ana"
+fmt.Println(nome)  // Ana
 ```
 
-Dentro de funções, `:=` é o padrão. Fora de funções (escopo de pacote), só `var` funciona.
+Pronto. Criamos uma caixinha chamada `nome`, colocamos `"Ana"` dentro, e depois imprimimos o conteúdo.
 
-## Tipos básicos
+## Duas formas de criar variáveis
 
-| Tipo | Exemplo | Valor zero |
-|------|---------|------------|
-| `string` | `"Hello"` | `""` |
-| `int` | `42` | `0` |
-| `float64` | `3.14` | `0` |
-| `bool` | `true` | `false` |
+Go tem duas maneiras de declarar variáveis. Veja a diferença:
 
-O **valor zero** é o valor padrão de uma variável declarada mas não atribuída. Em Go, não existe variável "não inicializada" — toda variável tem um valor zero garantido.
+### Forma curta: `:=` (a mais usada)
 
-## Inferência de tipos
+```go
+nome := "Go"
+idade := 15
+preco := 29.90
+ativo := true
+```
 
-Go infere o tipo pelo valor atribuído: `x := 42` cria um `int`, `x := 3.14` cria um `float64`, `x := "texto"` cria uma `string`. O tipo é fixo após a declaração — você não pode atribuir um `string` para uma variável `int`.
+O compilador **olha o valor da direita** e adivinha o tipo sozinho. `"Go"` é texto? Então `nome` é `string`. `15` é número inteiro? Então `idade` é `int`. Isso se chama **inferência de tipo**.
 
-## Uma regra importante
+> **Restrição:** `:=` só funciona **dentro de funções**. Fora delas, use `var`.
 
-Go não compila se você declarar uma variável e não usá-la. Isso parece rígido, mas evita variáveis esquecidas que confundem quem lê o código depois. 
+### Forma longa: `var`
+
+```go
+var nome string = "Go"
+var idade int = 15
+var preco float64 = 29.90
+var ativo bool = true
+```
+
+Aqui você escreve o tipo explicitamente. É mais verboso, mas útil quando você quer:
+- Declarar uma variável **sem dar valor ainda** (ela nasce com o valor zero)
+- Declarar variáveis **fora de funções** (escopo de pacote)
+
+```go
+var contador int     // nasce com valor 0 (valor zero de int)
+var mensagem string  // nasce com "" (valor zero de string)
+```
+
+## Os 4 tipos básicos que você vai usar o tempo todo
+
+| Tipo | Para que serve | Exemplo | Valor zero |
+|---|---|---|---|
+| `string` | Texto | `"Olá, Go!"` | `""` (texto vazio) |
+| `int` | Números inteiros | `42`, `-7` | `0` |
+| `float64` | Números com casas decimais | `3.14`, `99.90` | `0` |
+| `bool` | Verdadeiro ou falso | `true`, `false` | `false` |
+
+Existem outros tipos (veremos na lição de Tipos), mas com esses quatro você resolve a maioria dos problemas iniciais.
+
+## Valor zero — nada fica "indefinido"
+
+Em muitas linguagens, uma variável declarada sem valor pode conter **lixo de memória** ou causar erro. Em Go, **toda variável nasce com um valor padrão** chamado *valor zero*:
+
+```go
+var x int       // 0
+var s string    // ""
+var b bool      // false
+var f float64   // 0
+```
+
+Você nunca vai encontrar uma variável "indefinida" em Go. Isso torna o código mais previsível.
+
+## Como saber o tipo de uma variável?
+
+Use `%T` no `fmt.Printf`:
+
+```go
+nome := "Go"
+idade := 15
+fmt.Printf("nome é %T, idade é %T\n", nome, idade)
+// nome é string, idade é int
+```
+
+Isso é muito útil quando você não tem certeza de qual tipo o Go inferiu.
+
+## O tipo é fixo — para sempre
+
+Depois que uma variável é criada, o tipo dela **nunca muda**:
+
+```go
+x := 42       // x é int
+x = 100       // ✅ OK — 100 também é int
+x = "texto"   // ❌ Erro! Não pode colocar string numa variável int
+```
+
+Se você vem de JavaScript ou Python, onde uma variável pode ser número agora e texto depois, isso é diferente. Em Go, o tipo é decidido na criação e **não muda mais**.
+
+## A regra que pega todo mundo de surpresa
+
+Go **não compila** se você declarar uma variável e **não usar**:
+
+```go
+x := 42
+// ❌ Erro: x declared but not used
+```
+
+Parece chato no começo, mas é uma das melhores features de Go: impede que variáveis esquecidas se acumulem no código. Se declarou, tem que usar — ou apague. 
 

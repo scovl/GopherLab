@@ -75,27 +75,101 @@ aplicacao:
     }
 ---
 
-Antes de passar horas estudando Go, vale a pena entender **por que** fazer esse investimento. A linguagem foi criada dentro do Google em 2007, num contexto bem específico: os engenheiros precisavam de performance, mas linguagens rápidas como C++ eram complexas e tinham tempo de compilação absurdo projetos grandes levavam **45 minutos ou mais** para compilar. 
+## Por que aprender Go?
 
-Ao mesmo tempo, a era dos processadores multi-núcleo estava chegando, e as linguagens existentes não eram propícias para explorar esse paralelismo com facilidade. A solução foi criar uma linguagem nova. Simples como Python, rápida como C, e pensada para concorrência desde o início.
+Você já tem milhares de linguagens para escolher. Por que gastar seu tempo com mais uma? Aqui vai a resposta curta: **Go foi feita para resolver problemas reais que outras linguagens populares não resolvem bem**.
 
-## O que Go entrega
+## O problema que deu origem ao Go
 
-- **Compilação ultra-rápida** — projetos grandes compilam em segundos, não minutos.
-- **Binário estático único** — o deploy é copiar um arquivo; sem instalação de runtime, sem dependências externas.
-- **Garbage collector de baixa latência** — pausas abaixo de 1ms desde Go 1.14.
-- **Goroutines** — como threads, mas leves: uma goroutine usa ~2 KB de memória; uma thread do OS usa ~1 MB.
-- **Cross-compilation** — um comando compila seu código para Linux, Windows ou macOS de qualquer máquina.
-- **Apenas 25 palavras reservadas** — menos que Python (35), muito menos que Java (50+).
+Imagine que você trabalha no Google em 2007. Seu projeto em C++ demora **45 minutos para compilar**. Cada vez que você muda uma linha de código, espera 45 minutos para ver se funcionou. Isso era o dia-a-dia de engenheiros como Rob Pike e Ken Thompson.
 
-## Quem usa Go hoje (2025)
+Eles olharam para as alternativas e não ficaram satisfeitos:
 
-Go saiu do Google e hoje está no coração da infraestrutura moderna: **[Kubernetes](https://kubernetes.io/)**, **[Docker](https://www.docker.com/)**, **[Terraform](https://www.terraform.io/)** e **[Hugo](https://gohugo.io/)** são escritos em Go. No Brasil, empresas como **[Mercado Livre](https://www.mercadolivre.com.br/)**, **[Magazine Luiza](https://www.magazineluiza.com.br/)**, **[Itaú-unibanco](https://www.itau.com.br/)**, **[PagSeguro](https://www.pagseguro.com.br/)**, **[ContaAzul](https://www.contaazul.com/)**, **[Jusbrasil](https://www.jusbrasil.com.br/)** e **[ResultadosDigitais](https://www.rd.com.br/)** usam Go em produção.
+| Linguagem | Boa em... | Mas... |
+|---|---|---|
+| **C/C++** | Velocidade de execução | Compilação lenta, código complexo, bugs de memória |
+| **Java** | Projetos grandes, tipos seguros | Verbosa demais, JVM pesada para deploy |
+| **Python** | Produtividade, legibilidade | Lenta para rodar, sem tipos em compile time |
 
-## Quando usar Go
+Go foi a resposta: pegar as **melhores partes de cada uma** e deixar de fora a complexidade.
 
-Go brilha em qualquer situação onde **performance, simplicidade de deploy e concorrência** importam: APIs REST/gRPC, microsserviços, CLIs, ferramentas DevOps, proxies e orquestração de contêineres.
+## O que Go te dá na prática
 
-A linguagem não é orientada a objetos no sentido tradicional — não tem herança, não tem classes. Isso é uma escolha deliberada de simplicidade, não uma limitação. 
+### 1. Compilação em segundos
 
-Com interfaces e composição, você resolve os mesmos problemas com menos cerimônia. Vale ler o [FAQ oficial](https://go.dev/doc/faq#Is_Go_an_object-oriented_language) sobre isso quando chegar a hora.
+Enquanto projetos C++ compilam em minutos e Java em dezenas de segundos, Go compila projetos grandes em **poucos segundos**. Você muda o código, compila, testa — tudo rápido.
+
+### 2. Um único arquivo para deploy
+
+Quando você compila um programa Go, sai um **único arquivo executável**. Sem runtime (como JVM do Java), sem gerenciador de pacotes no servidor (como pip do Python), sem `node_modules`. Você copia o arquivo para o servidor e pronto — funciona.
+
+```bash
+# Compila para Linux a partir de qualquer sistema
+GOOS=linux GOARCH=amd64 go build -o meu-programa
+
+# Deploy = copiar o arquivo
+scp meu-programa servidor:/app/
+```
+
+### 3. Goroutines — concorrência sem dor de cabeça
+
+Go foi projetada para fazer várias coisas ao mesmo tempo (concorrência). A ferramenta principal são as **goroutines** — como threads, mas muito mais leves:
+
+| | Thread do sistema | Goroutine |
+|---|---|---|
+| **Memória** | ~1 MB cada | ~2 KB cada |
+| **Criar 10.000** | Pesado, muitas vezes impossível | Tranquilo |
+| **Comunicação** | Locks, mutexes (complicado) | Channels (simples) |
+
+Você pode ter **milhares de goroutines** rodando ao mesmo tempo num programa Go sem problemas.
+
+### 4. Uma linguagem pequena de verdade
+
+Go tem apenas **25 palavras reservadas**. Para comparação:
+
+- Python: 35
+- Java: 50+
+- C++: 80+
+
+Menos palavras = menos coisas para decorar = **mais rápido para ficar produtivo**.
+
+### 5. Garbage collector invisível
+
+Go limpa a memória que você não usa mais automaticamente (garbage collection), com pausas **menores que 1 milissegundo**. Você não precisa pensar em gerenciamento de memória como em C/C++, e não sofre pausas longas como em Java.
+
+## Quem usa Go no mundo real?
+
+Go não é uma linguagem acadêmica — ela roda infraestrutura que **bilhões de pessoas** usam todos os dias:
+
+- **Docker** — a plataforma de containers que revolucionou o deploy
+- **Kubernetes** — o orquestrador que roda os containers do mundo inteiro
+- **Terraform** — infraestrutura como código (usado por quase todo time de DevOps)
+- **Hugo** — um dos geradores de sites estáticos mais rápidos que existe
+
+No Brasil, empresas como **Mercado Livre**, **Magazine Luiza**, **Itaú**, **PagSeguro**, **ContaAzul** e **Jusbrasil** usam Go em produção.
+
+## Quando Go é a escolha certa?
+
+Go brilha especialmente em:
+
+- **APIs e microsserviços** — HTTP, REST, gRPC
+- **Ferramentas de linha de comando (CLI)** — como Docker, kubectl, Terraform
+- **Infraestrutura e DevOps** — proxies, load balancers, automação
+- **Sistemas que precisam de concorrência** — servidores web, processamento de filas
+
+## E quando Go NÃO é a melhor escolha?
+
+Nenhuma linguagem é perfeita para tudo. Go não é ideal para:
+
+- **Apps mobile** — Swift/Kotlin são melhores aqui
+- **Frontend web** — JavaScript/TypeScript dominam esse espaço
+- **Data Science/ML** — Python tem ecossistema imbatível
+- **Jogos** — C++, C# (Unity) e Rust são mais indicados
+
+## "Mas Go não tem classes nem herança!"
+
+Correto. Go **não é orientada a objetos** no sentido tradicional — sem classes, sem herança, sem hierarquias complexas. Isso é uma **escolha de design**, não uma limitação.
+
+Em vez de herança, Go usa **composição** (combinar tipos simples para criar complexos) e **interfaces** (contratos que tipos satisfazem automaticamente). O resultado é código mais simples e mais fácil de manter. Você vai entender isso em detalhes nas lições de structs e interfaces.
+
+> **Resumo:** Go é rápida como C, simples como Python, feita para concorrência, e compila num único binário. Se você quer construir APIs, microsserviços ou ferramentas de infraestrutura, Go é uma escolha excelente.

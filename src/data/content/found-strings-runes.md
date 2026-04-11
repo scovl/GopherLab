@@ -109,27 +109,125 @@ aplicacao:
 
 ---
 
-Strings em Go são sequências **imutáveis de bytes** codificadas em UTF-8. A operação `len(s)` retorna o número de bytes, não de caracteres — um caractere ASCII ocupa 1 byte, mas caracteres Unicode como `"ã"` ou `"世"` ocupam 2–4 bytes. Indexar com `s[i]` retorna um `byte` (uint8), não um caractere — isso silenciosamente corrompe texto multibyte.
+## Strings são bytes, não letras
 
-Para iterar por caracteres (Unicode code points), use `for i, r := range s`: o `range` decodifica cada `rune` (int32) e avança `i` pelo número correto de bytes. `utf8.RuneCountInString(s)` conta runes corretamente.
+A primeira surpresa de strings em Go: uma string é uma **sequência de bytes**, não de caracteres. Parece a mesma coisa, mas não é.
 
-## Tipos de literais string
+Letras ASCII (a-z, 0-9) cabem em **1 byte** cada. Mas letras acentuadas como `ã`, emojis como `🎉` e ideogramas como `世` precisam de **2, 3 ou até 4 bytes**:
 
-| Tipo | Delimitador | Processa escapes? |
+```go
+s := "Olá"
+fmt.Println(len(s))  // 4 (não 3!) — o "á" ocupa 2 bytes
+```
+
+Por isso, `len(s)` **conta bytes**, não letras. Se você precisa contar caracteres de verdade, use `utf8.RuneCountInString(s)`.
+
+## O que é uma rune?
+
+Uma **rune** é um caractere Unicode — representada internamente como um `int32`. Pense assim:
+
+| Conceito | Tipo em Go | O que representa |
 |---|---|---|
-| Interpretado | `"..."` | Sim (`\n`, `\t`, `\uXXXX`) |
-| Raw | `` `...` `` | Não — preserva tudo, incluindo quebras de linha reais |
+| Byte | `byte` (`uint8`) | 1 pedaço de 8 bits |
+| Rune | `rune` (`int32`) | 1 caractere Unicode completo |
 
-Raw strings são ideais para regex, JSON templates e queries SQL multilinha.
+A letra `A` é uma rune que cabe em 1 byte. O caractere `世` é uma rune que precisa de 3 bytes em UTF-8.
 
-## Concatenação eficiente
+## Como iterar por caracteres corretamente
 
-Strings são imutáveis: o operador `+` cria uma nova alocação a cada uso. Em N concatenações em loop, isso gera **O(N²) cópias**.
+**Errado** — indexar por posição devolve um byte, que pode ser só um pedaço de um caractere:
 
-`strings.Builder` mantém um buffer crescente interno — `WriteString` não aloca até o flush final com `b.String()`. Use-o sempre que concatenar em loop.
+```go
+s := "Olá"
+fmt.Println(s[2])  // 195 — um byte solto do "á", não a letra!
+```
 
-## Pacotes úteis
+**Certo** — usar `for range`, que decodifica cada rune automaticamente:
 
-- `strconv.Itoa` / `Atoi` — conversão int↔string decimal
-- `strconv.ParseFloat` / `FormatFloat` — conversão de floats
-- `strings.Contains`, `HasPrefix`, `HasSuffix`, `Index`, `Split`, `Join`, `Fields`, `TrimSpace`, `ToLower`, `ToUpper`, `Replace`, `Repeat`
+```go
+for i, r := range "Olá 世界" {
+    fmt.Printf("posição %d: %c\n", i, r)
+}
+// posição 0: O
+// posição 1: l
+// posição 2: á     ← pulou para posição 4 porque "á" usa 2 bytes
+// posição 4:       ← espaço
+// posição 5: 世    ← pulou para posição 8 porque "世" usa 3 bytes
+// posição 8: 界
+```
+
+Note que `i` avança por **bytes**, não por 1. O `range` cuida de tudo — você só precisa usar `r`.
+
+## Strings são imutáveis
+
+Você **não pode alterar** um caractere de uma string existente:
+
+```go
+s := "Olá"
+s[0] = 'X'  // ❌ erro de compilação!
+```
+
+Para "modificar" uma string, você cria uma nova. Se precisa manipular caractere a caractere, converta para `[]rune` (slice de runes), altere, e converta de volta:
+
+```go
+r := []rune("Olá")
+r[0] = 'X'
+fmt.Println(string(r))  // "Xlá"
+```
+
+## Dois tipos de string literal
+
+| Tipo | Como escrever | O que faz |
+|---|---|---|
+| **Interpretado** | `"texto\n"` | Processa escapes: `\n` vira quebra de linha |
+| **Raw** | `` `texto\n` `` | Preserva tudo literal: `\n` fica como `\n` |
+
+Raw strings (com crases) são perfeitas para SQL, regex e JSON:
+
+```go
+query := `SELECT * FROM users
+          WHERE active = true`  // quebra de linha real, sem \n
+```
+
+## Concatenação — cuidado com o `+` em loops
+
+Strings são imutáveis, então cada `+` cria uma **cópia nova na memória**. Num loop de 1000 repetições, isso gera 1000 cópias — muito lento.
+
+A solução: **`strings.Builder`**, que acumula texto num buffer e só faz uma cópia no final:
+
+```go
+var b strings.Builder
+for i := 0; i < 1000; i++ {
+    b.WriteString("Go ")
+}
+resultado := b.String()  // uma única alocação aqui
+```
+
+> **Regra prática:** 2-3 concatenações com `+`? Sem problema. Loop? Use `strings.Builder`.
+
+## Pacote `strings` — canivete suíço
+
+Não reinvente a roda — o pacote `strings` tem tudo que você precisa:
+
+| Função | O que faz | Exemplo |
+|---|---|---|
+| `strings.Contains(s, "Go")` | Contém substring? | `true` |
+| `strings.HasPrefix(s, "Ol")` | Começa com? | `true` |
+| `strings.HasSuffix(s, "do")` | Termina com? | `true` |
+| `strings.ToLower(s)` | Tudo minúsculo | `"olá"` |
+| `strings.Split(s, " ")` | Divide por separador | `["Olá", "mundo"]` |
+| `strings.Join(slice, ", ")` | Junta com separador | `"a, b, c"` |
+| `strings.TrimSpace(s)` | Remove espaços das pontas | `"Olá"` |
+| `strings.Fields(s)` | Divide por espaços em branco | `["Olá", "mundo"]` |
+
+## Conversões com `strconv`
+
+Para converter entre números e strings, use o pacote `strconv`:
+
+```go
+strconv.Itoa(42)           // int → string: "42"
+strconv.Atoi("42")         // string → int: 42, error
+strconv.FormatFloat(3.14, 'f', 2, 64)  // float → string: "3.14"
+```
+
+> **Lembre-se:** `string(65)` retorna `"A"` (o caractere Unicode 65), **não** `"65"`. Para converter número em texto, sempre use `strconv`.

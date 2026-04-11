@@ -150,46 +150,300 @@ aplicacao:
 
 ---
 
-Constraints em Go generics são **interfaces** que definem o conjunto de tipos permitidos e as operações disponíveis:
+## Recapitulando: o que é uma constraint?
 
-1. Interface com métodos (como `io.Reader`) — habilita apenas esses métodos
-2. Interface com union de tipos (`int | string`) — habilita operações comuns a todos
-3. Combinação de ambos
+Na lição anterior, você viu que generics permitem escrever funções que funcionam com vários tipos. Mas **quem decide quais tipos são permitidos?** As **constraints** (restrições).
 
-## O operador ~ (tilde)
+Uma constraint é uma **interface** que diz ao compilador: "esse type parameter só aceita tipos que satisfazem essas regras".
 
 ```go
-type Minutes int  // underlying type é int
+// Sem constraint — aceita QUALQUER tipo, mas não pode fazer quase nada
+func Primeiro[T any](lista []T) T { return lista[0] }
 
-func Double[T ~int](v T) T {  // aceita int E Minutes
-    return v * 2
+// Com constraint — aceita só tipos comparáveis com < >
+func Menor[T cmp.Ordered](a, b T) T {
+    if a < b {  // ✅ isso funciona porque cmp.Ordered garante que < existe
+        return a
+    }
+    return b
 }
 ```
 
-`~int` significa "qualquer tipo cujo **underlying type** é `int`". Sem `~`, apenas o tipo exato `int` satisfaria a constraint.
+> **Analogia:** constraint é como a **placa na entrada de um brinquedo** — "você precisa ter pelo menos 1,20m para entrar". Se o tipo não cumpre o requisito, o compilador não deixa passar.
 
-Tipicamente as constraints customizadas usam `~` para aceitar tipos definidos:
+---
+
+## Os 3 tipos de constraints
+
+### 1. Interface com métodos (a que você já conhece)
 
 ```go
-type Integer interface {
-    ~int | ~int8 | ~int16 | ~int32 | ~int64
+type Stringer interface {
+    String() string
+}
+
+func Imprimir[T Stringer](v T) {
+    fmt.Println(v.String())  // pode chamar String() porque a constraint garante
 }
 ```
 
-## Constraints da stdlib
+### 2. Interface com union de tipos (novidade dos generics)
 
-- **`cmp.Ordered`** (Go 1.21, stdlib): todos os tipos com `>`, `<`, `>=`, `<=`
-- `slices.Sort[S ~[]E, E cmp.Ordered](s S)` usa isso na prática
+```go
+type Numero interface {
+    int | float64 | int32
+}
 
-O pacote `golang.org/x/exp/constraints` (experimental) oferece: `Ordered`, `Integer`, `Float`, `Complex`, `Signed`, `Unsigned`.
+func Dobrar[T Numero](v T) T {
+    return v * 2  // pode usar * porque int, float64 e int32 suportam multiplicação
+}
+```
 
-## Limitações atuais
+O `|` funciona como "OU": aceita `int` **ou** `float64` **ou** `int32`.
 
-| Limitação | Detalhe |
-|---|---|
-| Type params em métodos | Não permitido — apenas no receiver da struct |
-| Specialization | Não existe — mesmo código gerado para todos os tipos |
-| Conversão `[]T` → `[]interface{}` | Não permitido |
-| Variádicos genéricos | Não existem |
+### 3. Combinação dos dois
 
-Essas limitações foram **escolhas deliberadas de simplicidade** e podem ser relaxadas em versões futuras.
+```go
+type NumeroComTexto interface {
+    ~int | ~float64
+    String() string   // também precisa ter esse método
+}
+```
+
+### Tabela resumo
+
+| Tipo de constraint | O que permite | Exemplo |
+|---|---|---|
+| `any` | Qualquer tipo | Só pode comparar com `==` (se `comparable`) |
+| Interface com métodos | Chamiar os métodos declarados | `io.Reader` → pode chamar `Read()` |
+| Interface com union | Operações comuns dos tipos listados | `int \| float64` → pode usar `+`, `*`, `<` |
+| Combinação | Métodos + operações dos tipos | O tipo precisa satisfazer ambos |
+
+---
+
+## O operador `~` (til) — a peça que faltava
+
+Esse é o detalhe que mais confunde iniciantes. Vamos por partes.
+
+### O problema
+
+Em Go, você pode criar tipos novos baseados em tipos existentes:
+
+```go
+type Celsius float64    // tipo novo, mas "por baixo" é float64
+type Idade int          // tipo novo, mas "por baixo" é int
+```
+
+Agora, se sua constraint diz:
+
+```go
+type Numero interface {
+    int | float64
+}
+```
+
+`Celsius` **NÃO** satisfaz essa constraint! Porque `Celsius` não é `float64` — é um tipo **diferente** que por acaso tem a mesma estrutura interna.
+
+### A solução: `~`
+
+O `~` (til) significa **"qualquer tipo cujo tipo base é..."**:
+
+```go
+type Numero interface {
+    ~int | ~float64    // ← com til!
+}
+```
+
+Agora `Celsius` (base `float64`) e `Idade` (base `int`) **satisfazem** a constraint!
+
+### Comparação lado a lado
+
+```go
+// Sem ~ → APENAS o tipo exato
+type SoInt interface { int }
+// ✅ int
+// ❌ type Idade int     ← rejeitado!
+
+// Com ~ → o tipo exato E qualquer tipo baseado nele
+type QualquerInt interface { ~int }
+// ✅ int
+// ✅ type Idade int     ← aceito!
+// ✅ type Codigo int    ← aceito!
+```
+
+> **Regra prática:** sempre use `~` nas suas constraints, a menos que tenha um motivo específico para não usar. Sem `~`, você rejeita tipos customizados do usuário da sua biblioteca.
+
+### Exemplo completo
+
+```go
+type Celsius float64
+type Fahrenheit float64
+
+type Temperatura interface {
+    ~float64    // aceita Celsius, Fahrenheit, e qualquer tipo baseado em float64
+}
+
+func Dobrar[T Temperatura](t T) T {
+    return t * 2
+}
+
+func main() {
+    c := Celsius(36.5)
+    f := Fahrenheit(98.6)
+    fmt.Println(Dobrar(c))  // 73.0 (tipo Celsius!)
+    fmt.Println(Dobrar(f))  // 197.2 (tipo Fahrenheit!)
+}
+```
+
+Note que `Dobrar(c)` retorna **`Celsius`**, não `float64`. O type parameter preserva o tipo concreto.
+
+---
+
+## Constraints prontas da stdlib — não reinvente a roda
+
+### `any` e `comparable` (embutidos)
+
+| Constraint | O que permite | Quando usar |
+|---|---|---|
+| `any` | Nada além de atribuir/retornar | Container genérico que não opera nos valores |
+| `comparable` | `==` e `!=` | Maps (`map[K]V` exige `K comparable`), busca em slice |
+
+```go
+func Contem[T comparable](lista []T, alvo T) bool {
+    for _, v := range lista {
+        if v == alvo {  // ✅ comparable permite ==
+            return true
+        }
+    }
+    return false
+}
+```
+
+### `cmp.Ordered` (Go 1.21+, stdlib)
+
+Permite `<`, `>`, `<=`, `>=` — todos os tipos numéricos + `string`:
+
+```go
+import "cmp"
+
+func Min[T cmp.Ordered](a, b T) T {
+    if a < b {
+        return a
+    }
+    return b
+}
+
+Min(3, 7)          // 3
+Min("ana", "bob")  // "ana" (comparação lexicográfica)
+Min(3.14, 2.71)   // 2.71
+```
+
+### Hierarquia das constraints
+
+```
+any (qualquer tipo)
+ └── comparable (suporta == !=)
+      └── cmp.Ordered (suporta < > <= >=)
+```
+
+> **Na prática:** use `any` quando não precisa operar nos valores, `comparable` quando precisa de `==`, e `cmp.Ordered` quando precisa de ordenação.
+
+---
+
+## Criando suas próprias constraints
+
+### Constraint para números
+
+```go
+type Number interface {
+    ~int | ~int8 | ~int16 | ~int32 | ~int64 |
+    ~float32 | ~float64
+}
+
+func Soma[T Number](nums []T) T {
+    var total T
+    for _, n := range nums {
+        total += n  // ✅ todos os tipos na union suportam +
+    }
+    return total
+}
+```
+
+### Constraint que combina union + método
+
+```go
+type Printable interface {
+    ~int | ~string
+    String() string
+}
+```
+
+O tipo precisa satisfazer **ambas** as condições: ter base `int` ou `string` **E** ter o método `String()`.
+
+---
+
+## Interfaces com union NÃO podem ser usadas como tipo
+
+Essa é uma pegadinha importante:
+
+```go
+type Numero interface {
+    ~int | ~float64
+}
+
+// ✅ Como constraint — funciona
+func Dobrar[T Numero](v T) T { return v * 2 }
+
+// ❌ Como tipo de variável — NÃO compila!
+var x Numero = 42  // ERRO: cannot use interface Numero as type
+```
+
+Interfaces com union de tipos **só podem ser usadas como constraints** de type parameters. Não podem ser usadas como tipo de variável, parâmetro de função normal ou retorno.
+
+> **Por quê?** Porque o compilador precisa saber o tamanho exato do tipo em tempo de compilação. Uma interface com union pode ser `int` (8 bytes) ou `float64` (8 bytes) — mas poderiam ser tipos de tamanhos diferentes.
+
+---
+
+## Limitações dos generics em Go — o que NÃO dá para fazer
+
+Go escolheu deliberadamente um design simples para generics. Isso significa que algumas coisas não funcionam:
+
+| O que você quer | Funciona? | Detalhe |
+|---|---|---|
+| Função genérica | ✅ Sim | `func F[T any](v T) T` |
+| Struct genérica | ✅ Sim | `type Box[T any] struct { Val T }` |
+| **Método** com type param próprio | ❌ Não | Métodos só podem usar type params do receiver |
+| Tratar `int` diferente de `string` dentro da função | ❌ Não | Não existe specialization |
+| Converter `[]int` para `[]any` | ❌ Não | Slices de tipos diferentes são incompatíveis |
+| Número variável de type params | ❌ Não | Não existem variádicos genéricos |
+
+### O mais confuso: métodos não podem ter type params
+
+```go
+type Box[T any] struct { Val T }
+
+// ✅ Método que usa o T do receiver — funciona
+func (b Box[T]) Get() T { return b.Val }
+
+// ❌ Método com type param PRÓPRIO — NÃO compila!
+func (b Box[T]) Convert[U any]() U { ... }  // ERRO
+```
+
+Se precisar, transforme em função:
+
+```go
+// ✅ Função livre com dois type params — funciona
+func Convert[T any, U any](b Box[T]) U { ... }
+```
+
+---
+
+## Resumo — quando usar qual constraint
+
+| Preciso de... | Use | Exemplo |
+|---|---|---|
+| Aceitar qualquer tipo | `any` | Container, wrapper |
+| Comparar com `==` | `comparable` | Busca, map key |
+| Comparar com `<` `>` | `cmp.Ordered` | Sort, min/max |
+| Operações numéricas | Crie `Number interface { ~int \| ~float64 \| ... }` | Soma, média |
+| Aceitar tipos customizados | Use `~` na constraint | `~int` aceita `type Idade int` |

@@ -157,49 +157,340 @@ aplicacao:
 
 ---
 
-## GORM
+## O problema: escrever SQL na mão é chato e perigoso
 
-O ORM mais popular em Go: models via structs, auto-migration, associations e hooks.
+Na aula anterior, você aprendeu `database/sql` — funciona, mas é **trabalhoso**:
 
 ```go
+// Com database/sql puro:
+row := db.QueryRow("SELECT id, name, email FROM users WHERE id = $1", id)
+var u User
+err := row.Scan(&u.ID, &u.Name, &u.Email)  // mapeia campo por campo 😩
+```
+
+Se a tabela tem 15 campos, são 15 argumentos no `Scan`. Se você errar a ordem... **bug silencioso**. Se adicionar uma coluna... precisa mudar em tudo que é lugar.
+
+Existem duas abordagens para resolver isso:
+
+| Abordagem | Ideia | Analogia |
+|---|---|---|
+| **ORM** (GORM) | Você escreve **structs**, ele gera o SQL | **Google Tradutor** — você fala português, ele traduz para SQL |
+| **Code gen** (SQLC) | Você escreve **SQL**, ele gera as structs | **Autocompletar** — você escreve SQL, ele gera o Go type-safe |
+
+---
+
+## GORM — o "Google Tradutor" de SQL
+
+GORM é o ORM mais popular em Go. A ideia é simples: **você trabalha com structs, e ele cuida do SQL**.
+
+### Passo 1: Defina o model (struct = tabela)
+
+```go
+import "gorm.io/gorm"
+
 type User struct {
-    gorm.Model
+    gorm.Model             // dá de graça: ID, CreatedAt, UpdatedAt, DeletedAt
     Name  string `gorm:"not null"`
     Email string `gorm:"uniqueIndex"`
 }
+```
 
-db.AutoMigrate(&User{})   // cria/atualiza tabela
+### O que `gorm.Model` dá de graça?
 
+| Campo | Tipo | O que faz |
+|---|---|---|
+| `ID` | `uint` | Primary key auto-increment |
+| `CreatedAt` | `time.Time` | Preenchido automaticamente no Create |
+| `UpdatedAt` | `time.Time` | Atualizado automaticamente no Save |
+| `DeletedAt` | `gorm.DeletedAt` | Soft delete (marca como deletado, mas não apaga) |
+
+> **Soft delete:** quando você faz `db.Delete(&user)`, o GORM **não** faz `DELETE FROM users`. Ele faz `UPDATE users SET deleted_at = NOW()`. O registro continua no banco, mas queries normais ignoram ele.
+
+### Passo 2: Crie a tabela automaticamente
+
+```go
+db.AutoMigrate(&User{})
+```
+
+O GORM lê a struct e cria a tabela se não existir. Se já existir, **adiciona** colunas novas (mas nunca deleta colunas antigas).
+
+> ⚠️ **Armadilha:** `AutoMigrate` é ótimo para desenvolvimento, mas em **produção** use ferramentas de migration (veremos depois). AutoMigrate nunca deleta colunas, então se você renomear um campo, a coluna antiga fica lá.
+
+### Passo 3: CRUD — as 4 operações básicas
+
+```go
+// CREATE — inserir
 db.Create(&User{Name: "Alice", Email: "alice@go.dev"})
-db.First(&user, "email = ?", email)
-db.Save(&user)
+
+// READ — buscar um
+var user User
+db.First(&user, "email = ?", "alice@go.dev")
+//                         ^^ placeholder → evita SQL injection!
+
+// READ — buscar vários
+var users []User
+db.Where("name ILIKE ?", "%ali%").Find(&users)
+
+// UPDATE — atualizar
+user.Name = "Alice Gopher"
+db.Save(&user)                   // salva todos os campos
+db.Model(&user).Update("name", "Alice Gopher")  // só um campo
+
+// DELETE — soft delete (seta deleted_at)
 db.Delete(&user)
 ```
 
-**Quando usar GORM:** prototipagem rápida, projetos com muitas operações CRUD simples, quando auto-migration é desejável em desenvolvimento.
+> **Perceba:** você nunca escreveu `INSERT INTO`, `SELECT`, `UPDATE` ou `DELETE`. O GORM fez tudo. Você só trabalha com structs Go.
 
-## SQLC
+### As tags `gorm:"..."` mais comuns
 
-Gera código Go **type-safe** a partir de queries SQL anotadas:
+| Tag | O que faz | Exemplo |
+|---|---|---|
+| `not null` | Campo obrigatório | `gorm:"not null"` |
+| `uniqueIndex` | Único (sem duplicatas) | `gorm:"uniqueIndex"` |
+| `index` | Cria índice (busca rápida) | `gorm:"index"` |
+| `default:valor` | Valor padrão | `gorm:"default:0"` |
+| `size:100` | Tamanho máximo (varchar) | `gorm:"size:100"` |
+| `foreignKey:CampoID` | Chave estrangeira | `gorm:"foreignKey:AutorID"` |
+| `-` | Ignora o campo | `gorm:"-"` |
+
+---
+
+## Relacionamentos no GORM — como ligar tabelas
+
+### Um-para-muitos (Has Many)
+
+Um autor tem **vários** livros:
+
+```go
+type Autor struct {
+    gorm.Model
+    Nome   string
+    Livros []Livro `gorm:"foreignKey:AutorID"`  // "um autor tem muitos livros"
+}
+
+type Livro struct {
+    gorm.Model
+    Titulo  string
+    AutorID uint    // chave estrangeira → aponta para Autor.ID
+    Autor   Autor   // o Go pode carregar o autor junto
+}
+```
+
+### O problema N+1 — e como resolver
+
+```go
+// ❌ Problema N+1: 1 query para autores + 1 query POR autor para livros
+var autores []Autor
+db.Find(&autores)
+for _, a := range autores {
+    fmt.Println(a.Livros)  // faz query extra para CADA autor!
+}
+
+// ✅ Preload: 2 queries no total (1 para autores, 1 para livros)
+db.Preload("Livros").Find(&autores)
+```
+
+> **Analogia N+1:** é como ir ao mercado comprar 10 ingredientes fazendo **10 viagens** (uma por ingrediente). `Preload` é como fazer UMA viagem e comprar tudo.
+
+### Criando com relacionamento
+
+```go
+// Cria autor E livros numa tacada só
+autor := Autor{
+    Nome: "Rob Pike",
+    Livros: []Livro{
+        {Titulo: "The Practice of Programming"},
+        {Titulo: "The Unix Programming Environment"},
+    },
+}
+db.Create(&autor)
+// GORM insere o autor, pega o ID gerado, e insere os livros com AutorID preenchido
+```
+
+---
+
+## SQLC — o "Autocompletar" de SQL
+
+SQLC é o **oposto** do GORM. Em vez de esconder o SQL, ele **te deixa escrever SQL** e gera código Go type-safe automaticamente.
+
+### Como funciona em 3 passos
+
+```
+1. Você escreve SQL       →  query.sql
+2. SQLC lê o SQL          →  analisa tipos, parâmetros, retornos
+3. SQLC gera código Go    →  funções type-safe com structs prontas
+```
+
+### Passo 1: Escreva as queries em SQL normal
 
 ```sql
+-- query.sql
+
 -- name: GetUser :one
-SELECT * FROM users WHERE id = $1 LIMIT 1;
+SELECT id, name, email FROM users
+WHERE id = $1 LIMIT 1;
+
+-- name: ListUsers :many
+SELECT id, name, email FROM users
+ORDER BY name;
+
+-- name: CreateUser :one
+INSERT INTO users (name, email)
+VALUES ($1, $2)
+RETURNING id, name, email;
+
+-- name: DeleteUser :exec
+DELETE FROM users WHERE id = $1;
 ```
 
-Após `sqlc generate`, você obtém:
-```go
-user, err := queries.GetUser(ctx, id)  // totalmente type-safe
-```
+### O que significam os comentários mágicos?
 
-**Quando usar SQLC:** produção com queries otimizadas, quando você quer controle total do SQL, times que já conhecem SQL bem.
-
-## Migrations
-
-Ferramentas populares para migrations: `golang-migrate/migrate` (CLI + library), `pressly/goose` (Go native), `Atlas` (schema-as-code). Sempre versione suas migrations e execute-as em CI antes de deploy.
-
-| Abordagem | Melhor para |
+| Comentário | Retorno em Go |
 |---|---|
-| GORM | Prototipagem, projetos simples |
-| SQLC | Produção, performance, type-safety total |
-| SQL puro + migrations | Máximo controle |
+| `-- name: GetUser :one` | Retorna **1 struct** (ou erro) |
+| `-- name: ListUsers :many` | Retorna **[]struct** (slice) |
+| `-- name: CreateUser :one` | Retorna **1 struct** (o registro criado) |
+| `-- name: DeleteUser :exec` | Retorna só `error` (sem dados) |
+
+### Passo 2: Configure o SQLC
+
+```yaml
+# sqlc.yaml
+version: "2"
+sql:
+  - engine: "postgresql"
+    queries: "query.sql"
+    schema: "schema.sql"
+    gen:
+      go:
+        package: "db"
+        out: "db"
+```
+
+### Passo 3: Gere o código
+
+```bash
+sqlc generate
+```
+
+O SQLC gera automaticamente:
+
+```go
+// db/query.sql.go (GERADO — não edite!)
+
+type User struct {
+    ID    int32
+    Name  string
+    Email string
+}
+
+func (q *Queries) GetUser(ctx context.Context, id int32) (User, error) { ... }
+func (q *Queries) ListUsers(ctx context.Context) ([]User, error) { ... }
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) { ... }
+func (q *Queries) DeleteUser(ctx context.Context, id int32) error { ... }
+```
+
+### Usando o código gerado
+
+```go
+queries := db.New(conn)
+
+// Type-safe! Se o SQL retorna id, name, email → a struct tem esses campos
+user, err := queries.GetUser(ctx, 42)
+fmt.Println(user.Name, user.Email)
+
+// Criar com parâmetros tipados
+newUser, err := queries.CreateUser(ctx, db.CreateUserParams{
+    Name:  "Alice",
+    Email: "alice@go.dev",
+})
+```
+
+> **A mágica:** se você mudar o SQL (adicionar coluna, mudar tipo), roda `sqlc generate` de novo e o **compilador Go** mostra todos os lugares que quebraram. Com GORM, você só descobre em runtime.
+
+---
+
+## GORM vs SQLC — comparação honesta
+
+| Aspecto | GORM | SQLC |
+|---|---|---|
+| Você escreve | **Structs Go** | **SQL puro** |
+| SQL gerado em | Runtime (quando roda) | Build time (antes de rodar) |
+| Type safety | Parcial (erros em runtime) | **Total** (erros em compilação) |
+| Aprender SQL? | Não precisa no início | **Precisa saber SQL** |
+| Performance | Boa (mas abstração tem custo) | **Máxima** (SQL otimizado por você) |
+| Relações (Join/Preload) | Automáticas (`Preload`) | Manualmente no SQL |
+| Auto-migration | Sim (`AutoMigrate`) | Não (precisa de ferramenta separada) |
+| Ideal para | Protótipos, CRUD simples | Produção, queries complexas |
+
+> **Resumindo:** GORM = **produtividade** (faz mais com menos código). SQLC = **controle e segurança** (você sabe exatamente o SQL que roda).
+
+---
+
+## Migrations — controlando a evolução do banco
+
+`AutoMigrate` do GORM é bom para desenvolvimento, mas em **produção** você precisa de controle:
+
+- Quero renomear uma coluna → `AutoMigrate` não faz isso
+- Quero garantir que todo deploy rode as mesmas mudanças → preciso de versionamento
+- O time precisa revisar mudanças no banco → preciso de arquivos `.sql` no Git
+
+### Ferramentas populares de migration
+
+| Ferramenta | Tipo | Destaque |
+|---|---|---|
+| `golang-migrate/migrate` | CLI + biblioteca Go | Mais popular, suporta vários bancos |
+| `pressly/goose` | CLI Go puro | Simples, migrations em Go ou SQL |
+| `Atlas` | Schema-as-code | Moderno, gera migrations automaticamente |
+
+### Exemplo com golang-migrate
+
+```bash
+# Instala
+go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
+# Cria uma migration
+migrate create -ext sql -dir migrations -seq criar_usuarios
+
+# Gerou dois arquivos:
+# migrations/000001_criar_usuarios.up.sql   ← aplica a mudança
+# migrations/000001_criar_usuarios.down.sql ← desfaz a mudança
+```
+
+```sql
+-- 000001_criar_usuarios.up.sql
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 000001_criar_usuarios.down.sql
+DROP TABLE users;
+```
+
+```bash
+# Aplica todas as migrations pendentes
+migrate -database "postgres://user:pass@localhost/db?sslmode=disable" -path migrations up
+
+# Desfaz a última
+migrate ... down 1
+```
+
+> **Regra de ouro:** toda mudança no banco de dados deve ser uma migration versionada no Git. Nunca altere o banco manualmente em produção.
+
+---
+
+## Resumo — quando usar o quê
+
+| Preciso de... | Use |
+|---|---|
+| Protótipo rápido, CRUD simples | **GORM** |
+| Máxima performance, queries complexas | **SQLC** |
+| Controle total, aprender SQL | **database/sql** puro |
+| Migrations versionadas | **golang-migrate** ou **goose** |
+| Relações automáticas (Preload, Join) | **GORM** |
+| Erros de SQL pegos na compilação | **SQLC** |
+| Projeto pequeno → cresceu → precisa otimizar | Comece com **GORM**, migre queries críticas para **SQLC** |

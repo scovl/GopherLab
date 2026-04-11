@@ -62,18 +62,57 @@ aplicacao:
     }
 ---
 
-Go (ou Golang) foi iniciado em setembro de 2007 por **Robert Griesemer**, **Rob Pike** e **Ken Thompson** enquanto aguardavam uma compilação C++ de 45 minutos no Google. O design começou em um documento interno de Pike e Thompson. A linguagem foi anunciada publicamente em novembro de 2009, com a versão 1.0 lançada em março de 2012. A promessa da v1.0 é mantida até hoje: **compatibilidade retroativa total** — qualquer código escrito para Go 1.x continua compilando e funcionando nas versões futuras.
+## Como Go nasceu: de uma compilação de 45 minutos
 
-## Marcos históricos
+Em 2007, três engenheiros do Google — **Robert Griesemer**, **Rob Pike** e **Ken Thompson** — estavam esperando um projeto C++ compilar. Demorou **45 minutos**. Enquanto esperavam, começaram a rascunhar uma linguagem nova que resolvesse os problemas que os incomodavam:
 
-- **Go 1.5** (2015): compilador e runtime reescritos em Go (antes era C)
-- **Go 1.11** (2018): Go Modules — resolveu o gerenciamento de dependências
-- **Go 1.13** (2019): literais numéricos modernos (`0b`, `0o`, `_`)
-- **Go 1.18** (2022): Generics — a feature mais requisitada em anos
-- **Go 1.21** (2023): funções embutidas `min`/`max`, pacotes `slices`/`maps`/`cmp`, e `log/slog` para logging estruturado
+- Compilação lenta demais
+- Código complexo demais para ler e manter
+- Problemas com concorrência (fazer várias coisas ao mesmo tempo)
+- Dependências confusas entre pacotes
 
-## Os criadores
+O resultado foi Go: uma linguagem que **compila em segundos**, tem sintaxe simples, e foi feita do zero para lidar com programas que precisam fazer muitas coisas ao mesmo tempo (servidores web, microsserviços, ferramentas de infraestrutura).
 
-**Ken Thompson** criou Unix e C (Turing Award 1983) e co-criou UTF-8. **Rob Pike** trabalhou com Thompson em Unix e Plan 9, e criou o pacote `utf8`. Ambos são responsáveis diretos pelo fato de Go ser nativamente UTF-8.
+## Quem são os criadores?
 
-Go é uma das poucas linguagens cujo compilador é escrito na própria linguagem depois de poucos anos de existência, demonstrando auto-suficiência.
+| Criador | Por que ele importa |
+|---|---|
+| **Ken Thompson** | Co-criou o Unix e a linguagem C. Ganhou o prêmio Turing (o "Nobel da computação") em 1983. Também co-criou o UTF-8, o encoding que o mundo inteiro usa |
+| **Rob Pike** | Trabalhou com Thompson no Unix e no Plan 9. Criou o suporte a UTF-8 em Go. É co-autor do livro "The Unix Programming Environment" |
+| **Robert Griesemer** | Trabalhou no motor JavaScript V8 (o que roda dentro do Chrome e do Node.js) e na Java HotSpot VM |
+
+> **Curiosidade:** como Thompson co-criou UTF-8, Go nasceu com suporte nativo a Unicode. Strings em Go são UTF-8 por padrão — você não precisa configurar nada para trabalhar com acentos, emojis ou ideogramas chineses.
+
+## A linha do tempo
+
+| Ano | O que aconteceu |
+|---|---|
+| **2007** | Griesemer, Pike e Thompson começam a desenhar a linguagem |
+| **2009** | Go é anunciado publicamente como projeto open source |
+| **2012** | Lançamento do **Go 1.0** com a promessa de compatibilidade |
+| **2015** | **Go 1.5** — o compilador foi reescrito em Go! (antes era em C) |
+| **2018** | **Go 1.11** — chegam os Go Modules, resolvendo o caos de dependências |
+| **2022** | **Go 1.18** — finalmente Generics, a feature mais pedida por anos |
+| **2023** | **Go 1.21** — funções `min`/`max` embutidas, pacotes `slices`/`maps` |
+
+## A promessa de compatibilidade
+
+Quando o Go 1.0 foi lançado em 2012, a equipe fez uma promessa ousada: **todo código escrito para Go 1.x vai continuar compilando e funcionando em versões futuras**. Isso significa que um programa escrito em 2012 roda sem alteração em Go 1.23 (2024).
+
+Para quem já sofreu atualizando projetos em Python 2→3, Ruby, Angular ou qualquer outra linguagem que quebra código antigo, isso é um alívio enorme. Você aprende Go uma vez e o que aprendeu continua valendo.
+
+## Por que o nome "Go"? E "Golang"?
+
+O nome oficial é **Go**. O problema é que "Go" é uma palavra muito genérica — difícil de pesquisar no Google. Por isso a comunidade usa **Golang** (Go + language) para facilitar buscas. O site oficial é [go.dev](https://go.dev), mas se você pesquisar "golang" no Google, encontra tudo o que precisa.
+
+## Onde Go é usado hoje?
+
+Go é a linguagem por trás de muitas ferramentas que você provavelmente já usou (mesmo sem saber):
+
+- **Docker** — a plataforma de containers
+- **Kubernetes** — o orquestrador de containers
+- **Terraform** — infraestrutura como código
+- **Hugo** — gerador de sites estáticos (um dos mais rápidos do mundo)
+- **Prometheus** — monitoramento e alertas
+
+Empresas como Google, Uber, Twitch, Dropbox e Mercado Livre usam Go em produção. A linguagem é especialmente popular para **APIs, microsserviços e ferramentas de DevOps**.

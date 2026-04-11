@@ -124,54 +124,176 @@ aplicacao:
 
 ---
 
-Go tem apenas **um construto de laço**: `for`.
+## Go tem um único loop: `for`
+
+Enquanto outras linguagens têm `for`, `while`, `do-while` e `foreach`, Go simplificou: **só existe `for`**. Mas ele assume várias formas:
+
+### Forma clássica (como o `for` de C/Java)
 
 ```go
-for {}                          // loop infinito
-for condition {}                // equivalente ao while
-for init; cond; post {}         // forma clássica
-for i, v := range slice {}      // range
-```
-
-## for-range
-
-`range` itera sobre arrays, slices, maps, strings e channels:
-
-- **Strings**: decodifica `rune`s (não bytes), retorna `(byteIndex, rune)` — avança o índice pelo tamanho em bytes do rune
-- **Maps**: a ordem de iteração é **indefinida** e muda entre execuções
-- **Channels**: bloqueia até receber um valor; termina quando o channel é fechado
-- **Inteiros (Go 1.22+)**: `for range N {}` itera N vezes sem variável necessária; `for i := range N {}` fornece `i` de 0 a N-1. Equivalente ao `for i := 0; i < N; i++` porém mais conciso.
-
-> **Go 1.22 — variável por iteração**: antes do Go 1.22, a variável de loop era compartilhada entre todas as iterações. Closures lançadas dentro do loop capturavam a mesma variável e podiam imprimir o mesmo valor. Em módulos com `go 1.22+`, cada iteração cria uma nova variável — o comportamento agora é intuitivo.
-
-## if com declaração de inicialização
-
-```go
-if v := calcular(); v > 0 {
-    // v existe apenas dentro deste bloco
+for i := 0; i < 5; i++ {
+    fmt.Println(i)  // 0, 1, 2, 3, 4
 }
 ```
 
-A variável `v` existe apenas dentro do `if` e seus blocos `else`.
-
-## switch
-
-- Cada `case` **não necessita de `break`** — fall-through é opt-in com a keyword `fallthrough`
-- Cases podem agrupar múltiplos valores: `case "sol", "lua":`
-- `switch` sem expressão equivale a `switch true {}` — ideal para encadear condições
-- **Type switch**: `switch v := x.(type) {}` — despacho por tipo concreto de uma interface
-
-## Labels e goto
-
-Labels permitem `break` e `continue` saírem de loops aninhados:
+### Forma "while" (só a condição)
 
 ```go
-outer:
+n := 10
+for n > 0 {
+    fmt.Println(n)
+    n--
+}
+```
+
+### Loop infinito
+
+```go
 for {
-    for {
-        break outer
+    // roda para sempre até break, return ou panic
+    break  // sai do loop
+}
+```
+
+### Repetir N vezes (Go 1.22+)
+
+```go
+for range 5 {
+    fmt.Println("Oi!")  // imprime 5 vezes
+}
+
+for i := range 5 {
+    fmt.Println(i)  // 0, 1, 2, 3, 4
+}
+```
+
+## `for range` — percorrer coleções
+
+`range` é a forma de percorrer slices, maps, strings e channels. Ele devolve **dois valores**: o índice e o elemento:
+
+```go
+frutas := []string{"maçã", "banana", "uva"}
+for i, fruta := range frutas {
+    fmt.Printf("%d: %s\n", i, fruta)
+}
+// 0: maçã
+// 1: banana
+// 2: uva
+```
+
+Se você não precisa do índice, use `_`:
+
+```go
+for _, fruta := range frutas {
+    fmt.Println(fruta)
+}
+```
+
+### Cuidados com `range`
+
+| Tipo | O que `range` retorna | Detalhe importante |
+|---|---|---|
+| Slice/Array | `índice, valor` | Cópia do elemento |
+| Map | `chave, valor` | Ordem **aleatória** — muda a cada execução! |
+| String | `índice (byte), rune` | Decodifica UTF-8; o índice pula bytes, não letras |
+| Channel | `valor` | Bloqueia até receber; para quando fecha |
+
+## `if` — com um truque útil
+
+O `if` de Go tem uma feature que outras linguagens não têm: você pode **declarar uma variável** que só existe dentro do `if`:
+
+```go
+if v := calcular(); v > 40 {
+    fmt.Println("Grande:", v)  // v existe aqui
+} else {
+    fmt.Println("Pequeno:", v) // e aqui também
+}
+// v NÃO existe aqui fora
+```
+
+Isso é muito usado para verificar erros:
+
+```go
+if err := fazerAlgo(); err != nil {
+    fmt.Println("Deu ruim:", err)
+    return
+}
+// se chegou aqui, deu tudo certo
+```
+
+## `switch` — sem `break` necessário
+
+Em C/Java, se você esquecer o `break` no `switch`, o código "cai" para o próximo case. Em Go, **cada case para automaticamente**:
+
+```go
+dia := "segunda"
+switch dia {
+case "segunda", "terça", "quarta", "quinta", "sexta":
+    fmt.Println("Dia útil")    // para aqui, não cai no default
+case "sábado", "domingo":
+    fmt.Println("Fim de semana")
+default:
+    fmt.Println("Dia inválido")
+}
+```
+
+Note que um `case` pode ter **múltiplos valores** separados por vírgula.
+
+### Switch sem expressão — substitui if/else if
+
+Se você omitir a expressão do `switch`, ele funciona como uma cadeia de `if/else if`:
+
+```go
+nota := 85
+switch {
+case nota >= 90:
+    fmt.Println("A")
+case nota >= 80:
+    fmt.Println("B")  // entra aqui (85 >= 80)
+case nota >= 70:
+    fmt.Println("C")
+default:
+    fmt.Println("F")
+}
+```
+
+### Type switch — descobrir o tipo de uma interface
+
+Quando você tem um valor `any` (interface vazia), pode usar type switch para saber o que tem dentro:
+
+```go
+func descrever(val any) {
+    switch v := val.(type) {
+    case int:
+        fmt.Println("É inteiro:", v)
+    case string:
+        fmt.Println("É texto:", v)
+    case bool:
+        fmt.Println("É booleano:", v)
+    default:
+        fmt.Printf("Tipo desconhecido: %T\n", v)
     }
 }
 ```
 
-`goto` existe mas é desaconselhado. Não há `do-while` em Go — use `for { ...; if !cond { break } }`.
+## Labels — sair de loops aninhados
+
+Quando você tem um loop dentro de outro, `break` só sai do loop **interno**. Para sair dos dois de uma vez, use um **label**:
+
+```go
+// Sem label: break só sai do for interno
+// Com label: break sai dos DOIS loops de uma vez
+
+procura:
+    for i := 0; i < 3; i++ {
+        for j := 0; j < 3; j++ {
+            if i == 1 && j == 1 {
+                break procura  // sai dos dois loops!
+            }
+            fmt.Printf("(%d,%d) ", i, j)
+        }
+    }
+// saída: (0,0) (0,1) (0,2) (1,0)
+```
+
+> **Sobre `goto`:** Go tem `goto`, mas é quase nunca usado. Se você está pensando em usar `goto`, provavelmente existe uma forma melhor. Labels com `break`/`continue` resolvem 99% dos casos.

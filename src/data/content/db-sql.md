@@ -199,44 +199,349 @@ aplicacao:
 
 ---
 
-O pacote `database/sql` é a interface genérica para SQL em Go. Drivers (pgx, pq, mysql) implementam a conexão registrando-se via `sql.Register`.
+## O que é `database/sql`?
 
-## Prepared statements — prevenção de SQL injection
+É o pacote da **stdlib** que Go usa para falar com bancos de dados SQL (PostgreSQL, MySQL, SQLite, etc.). Mas ele sozinho **não sabe falar com nenhum banco** — precisa de um **driver**.
 
-**Nunca** concatene valores em SQL — use `$1`, `$2` (PostgreSQL) ou `?` (MySQL/SQLite):
+> **Analogia:** `database/sql` é como uma **tomada universal**. O driver (pgx, pq, mysql) é o **adaptador** para cada tipo de banco. A tomada é sempre a mesma — só troca o adaptador.
 
-```go
-// ❌ Errado — SQL injection
-db.QueryRow("SELECT nome FROM users WHERE id = " + id)
-
-// ✅ Correto — prepared statement
-db.QueryRowContext(ctx, "SELECT nome FROM users WHERE id = $1", id).Scan(&nome)
+```
+Seu código Go
+    ↓
+database/sql  ← interface padrão (sempre igual)
+    ↓
+Driver (pgx, pq, mysql)  ← adaptador específico
+    ↓
+PostgreSQL / MySQL / SQLite
 ```
 
-## Connection pool
+---
+
+## Conectando ao banco — passo a passo
+
+### Passo 1: Importe o driver (com `_`)
 
 ```go
-db.SetMaxOpenConns(25)
-db.SetMaxIdleConns(5)
-db.SetConnMaxLifetime(5 * time.Minute)
+import (
+    "database/sql"
+    _ "github.com/lib/pq"  // driver PostgreSQL
+)
 ```
 
-`db.Ping()` verifica conexão. `rows.Close()` é obrigatório — use `defer`. `sql.ErrNoRows` é retornado quando `SELECT` não encontra nada.
+> **Por que `_`?** Você não usa o pacote diretamente. O `_` faz o Go importar o pacote **só para executar o `init()`**, que registra o driver. Sem o `_`, o Go remove o import por "não usado".
 
-## pgx
-
-`pgx` é o driver PostgreSQL mais performático, com:
-- Suporte nativo a arrays, JSON e tipos customizados PostgreSQL
-- Connection pooling via `pgxpool`
-- Melhor performance que `pq` por usar o protocolo binário do PostgreSQL
-
-## Transações
+### Passo 2: Abra a conexão
 
 ```go
+db, err := sql.Open("postgres", "host=localhost user=app dbname=livros sslmode=disable")
+if err != nil {
+    log.Fatal(err)
+}
+defer db.Close()
+```
+
+### ⚠️ Armadilha: `sql.Open` NÃO conecta!
+
+```go
+db, err := sql.Open(...)  // ✅ Só valida os argumentos. NÃO tenta conectar!
+// Nesse ponto, o banco pode estar fora do ar e você não sabe.
+
+err = db.Ping()  // ✅ AGORA sim, tenta conectar de verdade
+```
+
+> **Analogia:** `sql.Open` é como **salvar o número do telefone**. `db.Ping` é **ligar para ver se a pessoa atende**.
+
+### Passo 3: Sempre use `Context`
+
+```go
+ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+defer cancel()
+
+err := db.PingContext(ctx)  // se não conectar em 3 segundos → erro
+```
+
+> Em servidores HTTP, use `r.Context()` — se o cliente desconectar, a query é cancelada automaticamente. Sem context, uma query lenta fica rodando **para sempre**.
+
+---
+
+## SQL Injection — o perigo número 1
+
+### O que é?
+
+Imagine que você faz login assim:
+
+```go
+// ❌ NUNCA FAÇA ISSO — concatenar valores no SQL
+query := "SELECT * FROM users WHERE email = '" + email + "'"
+db.QueryRow(query)
+```
+
+Se alguém digitar no campo email:
+
+```
+' OR '1'='1
+```
+
+A query vira:
+
+```sql
+SELECT * FROM users WHERE email = '' OR '1'='1'
+--                                     ^^^^^^^^^ isso é SEMPRE true!
+-- Resultado: retorna TODOS os usuários!
+```
+
+> **Analogia:** é como se alguém pedisse ao caixa do banco: "quero sacar dinheiro da conta 123... **ou de qualquer conta que exista**". E o caixa obedecesse.
+
+### A solução: placeholders (prepared statements)
+
+```go
+// ✅ CORRETO — valores ficam separados do SQL
+db.QueryRowContext(ctx,
+    "SELECT * FROM users WHERE email = $1",  // $1 = placeholder
+    email,                                     // valor passado separadamente
+)
+```
+
+O driver envia a query e os valores **separadamente**. O banco sabe: "$1 é um VALOR, não código SQL". Impossível injetar.
+
+| Banco | Placeholder |
+|---|---|
+| PostgreSQL | `$1`, `$2`, `$3` |
+| MySQL | `?`, `?`, `?` |
+| SQLite | `?`, `?`, `?` |
+
+> **Regra absoluta:** NUNCA monte SQL com `+`, `fmt.Sprintf`, ou string interpolation. SEMPRE use placeholders.
+
+---
+
+## As 3 formas de fazer queries
+
+### 1. `QueryRowContext` — buscar **UMA** linha
+
+```go
+var nome string
+var idade int
+
+err := db.QueryRowContext(ctx,
+    "SELECT nome, idade FROM users WHERE id = $1", id,
+).Scan(&nome, &idade)
+//     ^^^^^ mapeia cada coluna para uma variável
+
+if err == sql.ErrNoRows {
+    fmt.Println("usuário não encontrado")  // não é erro "fatal"
+} else if err != nil {
+    log.Fatal(err)  // erro real (rede caiu, SQL errado, etc.)
+}
+```
+
+> **`sql.ErrNoRows`** é um erro **sentinela** (lembra da aula de erros?). Significa "o SELECT não encontrou nada". Não é erro fatal — é só "não achei".
+
+### 2. `QueryContext` — buscar **VÁRIAS** linhas
+
+```go
+rows, err := db.QueryContext(ctx,
+    "SELECT id, nome FROM users ORDER BY nome",
+)
+if err != nil {
+    log.Fatal(err)
+}
+defer rows.Close()  // ⚠️ OBRIGATÓRIO! Sem isso, vaza conexão
+
+for rows.Next() {            // para cada linha...
+    var id int
+    var nome string
+    err := rows.Scan(&id, &nome)  // mapeia as colunas
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Printf("%d: %s\n", id, nome)
+}
+
+// Depois do loop, verifica se teve erro DURANTE a iteração
+if err := rows.Err(); err != nil {
+    log.Fatal(err)
+}
+```
+
+### ⚠️ Por que `defer rows.Close()` é obrigatório?
+
+Cada `rows` **ocupa uma conexão** do pool. Se você não fizer `Close()`, a conexão **nunca volta** para o pool. Depois de algumas chamadas, o pool esgota e o programa **trava**.
+
+> **Analogia:** é como pegar um livro na biblioteca e nunca devolver. Depois de um tempo, não sobra livro para ninguém.
+
+### 3. `ExecContext` — INSERT, UPDATE, DELETE (não retorna linhas)
+
+```go
+result, err := db.ExecContext(ctx,
+    "INSERT INTO users (nome, email) VALUES ($1, $2)",
+    "Alice", "alice@go.dev",
+)
+if err != nil {
+    log.Fatal(err)
+}
+
+linhasAfetadas, _ := result.RowsAffected()
+fmt.Printf("%d linhas inseridas\n", linhasAfetadas)
+```
+
+### Resumo das 3 formas
+
+| Método | Quando usar | Retorno |
+|---|---|---|
+| `QueryRowContext` | SELECT que retorna **1** linha | `.Scan()` direto |
+| `QueryContext` | SELECT que retorna **várias** linhas | `rows` (itere com `Next()`) |
+| `ExecContext` | INSERT, UPDATE, DELETE | `result` (RowsAffected) |
+
+---
+
+## Connection Pool — o Go gerencia conexões para você
+
+`sql.DB` **não é UMA conexão**. É um **pool** (piscina) de conexões:
+
+```
+sql.DB (pool)
+├── Conexão 1: ocupada (query rodando)
+├── Conexão 2: ociosa (pronta para usar)
+├── Conexão 3: ociosa
+└── ... até MaxOpenConns
+```
+
+### Configurando o pool
+
+```go
+db.SetMaxOpenConns(25)              // máximo de conexões ao mesmo tempo
+db.SetMaxIdleConns(5)               // quantas ficam "prontas" quando ociosas
+db.SetConnMaxLifetime(5 * time.Minute)  // recicla conexões velhas
+```
+
+| Configuração | O que faz | Valor típico |
+|---|---|---|
+| `MaxOpenConns` | Limite de conexões simultâneas | 25 |
+| `MaxIdleConns` | Conexões mantidas prontas | 5 |
+| `ConnMaxLifetime` | Tempo máximo de vida de uma conexão | 5 min |
+
+> **Por que reciclar?** Firewalls e proxies matam conexões paradas demais. `ConnMaxLifetime` fecha e reabre antes que elas morram sozinhas.
+
+> **Por que limitar?** Sem limite, 1000 requests simultâneos abrirão 1000 conexões. O PostgreSQL tem limite (default 100). Seu programa travaria esperando conexão.
+
+---
+
+## pgx — o driver "turbo" para PostgreSQL
+
+O driver `lib/pq` funciona, mas está em modo manutenção. O **pgx** é mais rápido e tem mais recursos:
+
+| Recurso | lib/pq | pgx |
+|---|---|---|
+| Protocolo | Texto | **Binário** (mais rápido) |
+| Arrays nativos | Não | Sim |
+| JSONB nativo | Não | Sim |
+| Connection pool próprio | Não | `pgxpool` |
+| Status | Manutenção | **Ativo** |
+
+### Usando pgx com database/sql (mais fácil de migrar)
+
+```go
+import (
+    "database/sql"
+    _ "github.com/jackc/pgx/v5/stdlib"  // registra pgx como driver
+)
+
+db, err := sql.Open("pgx", "postgres://user:pass@localhost/db")
+```
+
+### Usando pgx direto (máxima performance)
+
+```go
+import "github.com/jackc/pgx/v5/pgxpool"
+
+pool, err := pgxpool.New(ctx, "postgres://user:pass@localhost/db")
+defer pool.Close()
+
+var nome string
+err = pool.QueryRow(ctx, "SELECT nome FROM users WHERE id = $1", 1).Scan(&nome)
+```
+
+> **Dica:** se está começando, use `pgx` via `database/sql` (segundo exemplo). A API é a mesma que vimos acima. Se precisar de performance máxima depois, migre para `pgxpool` direto.
+
+---
+
+## Transações — tudo ou nada
+
+Imagine transferir dinheiro: debitar da conta A e creditar na conta B. Se debitar mas falhar ao creditar, o dinheiro **sumiu**!
+
+Transações garantem: **ou todas as operações acontecem, ou nenhuma**.
+
+```go
+// Começa a transação
 tx, err := db.BeginTx(ctx, nil)
-if err != nil { return err }
-defer tx.Rollback()  // no-op se Commit foi chamado
+if err != nil {
+    return err
+}
+defer tx.Rollback()  // se algo der errado → desfaz TUDO
 
-// operações com tx...
+// Operação 1: debita
+_, err = tx.ExecContext(ctx,
+    "UPDATE contas SET saldo = saldo - $1 WHERE id = $2", valor, contaOrigem)
+if err != nil {
+    return err  // defer faz Rollback automaticamente
+}
+
+// Operação 2: credita
+_, err = tx.ExecContext(ctx,
+    "UPDATE contas SET saldo = saldo + $1 WHERE id = $2", valor, contaDestino)
+if err != nil {
+    return err  // defer faz Rollback automaticamente
+}
+
+// Tudo deu certo → confirma!
 return tx.Commit()
+// Depois do Commit, o defer tx.Rollback() vira no-op (não faz nada)
 ```
+
+### O padrão `defer Rollback` + `Commit` no final
+
+```
+1. BeginTx        → inicia transação
+2. defer Rollback → "se eu sair sem Commit, desfaz tudo"
+3. Operações...   → usa tx (não db!) para queries
+4. Commit         → confirma tudo
+   └── Se Commit ok → defer Rollback é ignorado
+   └── Se erro antes do Commit → defer Rollback desfaz tudo
+```
+
+> ⚠️ Dentro da transação, use `tx.ExecContext` / `tx.QueryContext` — **não** `db.ExecContext`. Usar `db` em vez de `tx` roda a query **fora** da transação!
+
+---
+
+## Os 5 erros mais comuns de iniciantes
+
+| Erro | Consequência | Solução |
+|---|---|---|
+| Concatenar valores no SQL | SQL Injection | Use placeholders (`$1`, `?`) |
+| Esquecer `defer rows.Close()` | Leak de conexões → programa trava | Sempre `defer rows.Close()` |
+| Não chamar `rows.Err()` | Erro de rede ignorado silenciosamente | Verifique após o loop |
+| Usar `db` em vez de `tx` na transação | Query roda fora da transação | Use `tx.ExecContext`, não `db.` |
+| Não configurar o pool | Conexões demais → banco rejeita | Configure `SetMaxOpenConns` |
+
+---
+
+## Resumo — o fluxo completo
+
+```
+1. sql.Open("driver", dsn)     → cria o pool (não conecta!)
+2. db.PingContext(ctx)          → testa a conexão de verdade
+3. Configure o pool             → SetMaxOpenConns, SetMaxIdleConns
+4. Queries com placeholders     → NUNCA concatene valores
+5. defer rows.Close()           → sempre feche os rows
+6. rows.Err() após o loop       → verifique erros de iteração
+7. Transações: BeginTx + defer Rollback + Commit
+```
+
+| Preciso de... | Use |
+|---|---|
+| Buscar 1 registro | `db.QueryRowContext` + `Scan` |
+| Buscar vários registros | `db.QueryContext` + `rows.Next()` + `Scan` |
+| INSERT, UPDATE, DELETE | `db.ExecContext` |
+| Tudo ou nada (transação) | `db.BeginTx` → `tx.Exec...` → `tx.Commit` |
+| Driver PostgreSQL rápido | `pgx` (via stdlib ou direto) |
+| Verificar se "não encontrou" | `errors.Is(err, sql.ErrNoRows)` |

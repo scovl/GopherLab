@@ -128,26 +128,132 @@ aplicacao:
 
 ---
 
-Go é inteiramente **call-by-value**: ao passar um argumento, o compilador copia o valor.
+## O problema: funções recebem cópias
 
-- Para `int`, `bool`, structs — a cópia é do valor completo
-- Para slices, maps e channels — a cópia é do **descritor interno** (ponteiro + len/cap), e o array/hash subjacente não é copiado
+Em Go, **tudo é passado por cópia**. Quando você passa uma variável para uma função, ela recebe uma **cópia independente** — modificar a cópia não altera o original:
 
-Por isso modificar elementos de um slice passado para uma função é visível no caller, mas `append()` no slice interno não é (precisaria retornar o novo slice ou passar `*[]T`).
+```go
+func tentarDobrar(n int) {
+    n = n * 2  // modifica a cópia local
+}
 
-## Operadores & e *
+x := 10
+tentarDobrar(x)
+fmt.Println(x)  // 10 — não mudou nada!
+```
 
-`&` obtém o endereço de uma variável (addressable value); `*` derreferencia, acessando o valor no endereço. Go **não tem aritmética de ponteiro** — não é possível incrementar um ponteiro como em C.
+E agora? Se eu *preciso* que a função altere minha variável?
 
-`new(T)` aloca memória com zero value e retorna um `*T`; equivale a `var t T; return &t`. O compilador decide se aloca na pilha ou heap (**escape analysis**) — não há `new` vs `malloc` manual.
+## A solução: ponteiros
 
-## Value receiver vs pointer receiver
+Um **ponteiro** é o endereço de memória onde uma variável mora. Em vez de passar a variável, você passa o **endereço** — e a função consegue acessar o valor original:
 
-| Receiver | Quando usar |
+```go
+func dobrar(n *int) {   // recebe um ponteiro para int
+    *n = *n * 2          // modifica o valor no endereço
+}
+
+x := 10
+dobrar(&x)              // passa o endereço de x
+fmt.Println(x)          // 20 — agora sim!
+```
+
+Dois operadores para gravar:
+
+| Operador | Leia como | O que faz | Exemplo |
+|---|---|---|---|
+| `&` | "endereço de" | Pega o endereço de uma variável | `&x` → ponteiro para x |
+| `*` | "valor em" | Acessa o valor no endereço | `*n` → o int que mora naquele endereço |
+
+> **Analogia:** pense num ponteiro como o **endereço de uma casa**. `&casa` te dá o endereço. `*endereco` te leva até a casa. Passar o endereço permite que alguém vá lá e mude algo na casa de verdade.
+
+## `new()` — criar um ponteiro do zero
+
+`new(T)` cria um valor do tipo `T` com zero value e devolve um ponteiro para ele:
+
+```go
+p := new(int)     // p é *int, apontando para um int que vale 0
+*p = 42           // agora vale 42
+fmt.Println(*p)   // 42
+```
+
+Na prática, a maioria dos gophers prefere a forma direta:
+
+```go
+x := 42
+p := &x  // mesmo resultado: p é *int apontando para 42
+```
+
+## Ponteiro nil — a armadilha mortal
+
+Um ponteiro sem inicializar vale `nil` (nada, nenhum endereço). Tentar acessar o valor de um ponteiro nil **causa panic** e derruba o programa:
+
+```go
+var p *int          // nil — não aponta para nada
+fmt.Println(*p)     // 💥 PANIC: nil pointer dereference
+```
+
+**Sempre verifique antes de usar:**
+
+```go
+if p != nil {
+    fmt.Println(*p)  // seguro
+}
+```
+
+## Go NÃO tem aritmética de ponteiro
+
+Em C/C++, você pode fazer `p++` para avançar o ponteiro para o próximo endereço. Em Go, **isso não existe**. Ponteiros são mais seguros: você só pode acessar exatamente o que eles apontam.
+
+## Métodos: value receiver vs pointer receiver
+
+Quando você cria métodos em structs, precisa decidir: o método recebe uma **cópia** da struct ou um **ponteiro** para ela?
+
+```go
+type Ponto struct {
+    X, Y float64
+}
+
+// Value receiver — recebe cópia, NÃO modifica o original
+func (p Ponto) Mostrar() {
+    fmt.Printf("(%v, %v)\n", p.X, p.Y)
+}
+
+// Pointer receiver — recebe ponteiro, PODE modificar o original
+func (p *Ponto) Mover(dx, dy float64) {
+    p.X += dx
+    p.Y += dy
+}
+```
+
+Quando usar cada um:
+
+| Situação | Use |
 |---|---|
-| `func (p Ponto) Area()` | Leitura, tipos pequenos |
-| `func (p *Ponto) Mover()` | Modificação, tipos grandes, tipos com campos não-copiáveis (mutex) |
+| O método só **lê** dados | Value receiver `(p Ponto)` |
+| O método **modifica** a struct | Pointer receiver `(p *Ponto)` |
+| A struct é grande (>64 bytes) | Pointer receiver (evita cópia cara) |
+| A struct tem `sync.Mutex` ou similar | Pointer receiver (mutex não pode ser copiado) |
 
-Go auto-derreferencia: se `p` é do tipo `Ponto`, `p.Mover()` é sugar para `(&p).Mover()`.
+Uma facilidade: Go faz a conversão automaticamente. Se `p` é um `Ponto` (não ponteiro), você pode chamar `p.Mover(1, 2)` e o compilador entende como `(&p).Mover(1, 2)`.
 
-> **Regra:** todos os métodos de um tipo devem usar o mesmo kind de receiver (todos value **ou** todos pointer) para consistência.
+> **Regra prática:** se **qualquer** método do tipo precisa ser pointer receiver, faça **todos** pointer receiver. Manter consistência evita surpresas.
+
+## Slices e maps — o caso especial
+
+Slices e maps parecem "passar por referência", mas tecnicamente não é isso. O que acontece:
+
+- Um slice é internamente um **descritor** com 3 campos: ponteiro para o array, comprimento e capacidade
+- Quando você passa um slice para uma função, o **descritor é copiado**, mas o ponteiro interno aponta para o **mesmo array**
+
+```go
+func mudarPrimeiro(s []int) {
+    s[0] = 999  // ✅ modifica o array original — ambos apontam para ele
+}
+
+func tentarAppend(s []int) {
+    s = append(s, 42)  // ❌ o append pode criar novo array, e o caller não vê
+}
+```
+
+Por isso: modificar **elementos** de um slice dentro de uma função funciona, mas `append` pode não ser visível. Se precisar fazer `append` dentro de uma função, retorne o novo slice ou passe `*[]int`.

@@ -151,42 +151,255 @@ aplicacao:
 
 ---
 
-Go tem servidor HTTP robusto na stdlib. A partir do **Go 1.22**, o `ServeMux` suporta métodos HTTP e path params nativamente:
+## O servidor HTTP mais simples do mundo
+
+Em muitas linguagens, você precisa instalar um framework para criar um servidor web. Em Go, a stdlib já vem com tudo. Olha como é simples:
+
+```go
+package main
+
+import (
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+        fmt.Fprintln(w, "Olá, mundo!")
+    })
+    http.ListenAndServe(":8080", nil)
+}
+```
+
+Rode esse código e abra `http://localhost:8080` no navegador — você vai ver "Olá, mundo!".
+
+### Anatomia desse código
+
+| Parte | O que faz |
+|---|---|
+| `http.HandleFunc("/", ...)` | "Quando alguém acessar `/`, execute essa função" |
+| `w http.ResponseWriter` | É a **caneta** — você escreve nela o que quer enviar de volta |
+| `r *http.Request` | É o **envelope** — contém tudo que o cliente enviou (URL, headers, body) |
+| `fmt.Fprintln(w, ...)` | Escreve texto na resposta HTTP |
+| `http.ListenAndServe(":8080", nil)` | "Fique escutando na porta 8080" — **bloqueia** o programa |
+
+> Pense no servidor como um **restaurante**: `ListenAndServe` abre as portas, `HandleFunc` define o cardápio (quais rotas existem), `w` é o prato onde você coloca a comida, e `r` é o pedido do cliente.
+
+---
+
+## Rotas com método e parâmetros (Go 1.22+)
+
+Antes do Go 1.22, a stdlib não sabia diferenciar GET de POST nem extrair parâmetros da URL. Precisava de frameworks. Agora não precisa mais:
 
 ```go
 mux := http.NewServeMux()
+
+// GET /api/users/42 → id = "42"
 mux.HandleFunc("GET /api/users/{id}", func(w http.ResponseWriter, r *http.Request) {
-    id := r.PathValue("id")
-    json.NewEncoder(w).Encode(map[string]string{"id": id})
+    id := r.PathValue("id")           // extrai o {id} da URL
+    fmt.Fprintf(w, "Usuário: %s", id)
 })
+
+// POST /api/users → cria usuário
+mux.HandleFunc("POST /api/users", func(w http.ResponseWriter, r *http.Request) {
+    // ... ler body JSON, criar usuário
+    w.WriteHeader(http.StatusCreated)  // responde 201
+})
+
 http.ListenAndServe(":8080", mux)
 ```
 
-## Templates HTML
+### O que mudou com Go 1.22?
 
-`html/template` renderiza HTML **seguro** — escape automático contra XSS. `text/template` é para texto puro sem preocupação com HTML. `template.Must` panics se o template tiver erros de parse — use para templates estáticos em init.
+| Antes (Go < 1.22) | Depois (Go 1.22+) |
+|---|---|
+| `"/api/users"` — aceita GET, POST, PUT, tudo | `"GET /api/users"` — só GET |
+| Precisa de framework para path params | `"/users/{id}"` nativo, com `r.PathValue("id")` |
+| Rotas ambíguas → bugs difíceis | Rotas com prioridade clara |
 
-## Arquivos estáticos
+### `ServeMux` vs `nil` — qual a diferença?
 
 ```go
+// Opção 1: usa o mux global (simples, bom pra protótipos)
+http.HandleFunc("/", handler)
+http.ListenAndServe(":8080", nil)  // nil = usa mux global
+
+// Opção 2: cria seu próprio mux (melhor para apps reais)
+mux := http.NewServeMux()
+mux.HandleFunc("GET /", handler)
+http.ListenAndServe(":8080", mux)  // passa o seu mux
+```
+
+Use a Opção 2 em projetos reais — ela evita conflitos quando você tem testes ou múltiplos servidores.
+
+---
+
+## Respondendo com JSON
+
+Na prática, APIs retornam JSON, não texto puro. O padrão em Go:
+
+```go
+mux.HandleFunc("GET /api/users/{id}", func(w http.ResponseWriter, r *http.Request) {
+    user := map[string]string{
+        "id":   r.PathValue("id"),
+        "nome": "Ana",
+    }
+
+    w.Header().Set("Content-Type", "application/json")  // ⚠️ ANTES de escrever!
+    json.NewEncoder(w).Encode(user)
+})
+```
+
+> **Armadilha:** se você não setar `Content-Type` antes de chamar `Encode`, Go envia como `text/plain`. O navegador/cliente pode não interpretar como JSON.
+
+### Lendo JSON do body (POST/PUT)
+
+```go
+mux.HandleFunc("POST /api/users", func(w http.ResponseWriter, r *http.Request) {
+    var user User
+    if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+        http.Error(w, "JSON inválido", http.StatusBadRequest)  // 400
+        return
+    }
+    // user agora tem os dados do cliente
+    fmt.Fprintf(w, "Recebi: %s", user.Nome)
+})
+```
+
+---
+
+## Templates HTML — gerando páginas dinâmicas
+
+Go tem um sistema de templates embutido. Pense neles como **HTML com buracos** que você preenche com dados:
+
+```go
+tmpl := template.Must(template.New("page").Parse(`
+    <h1>Olá, {{.Nome}}!</h1>
+    <p>Você tem {{.Idade}} anos.</p>
+`))
+
+mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+    dados := map[string]any{"Nome": "Ana", "Idade": 28}
+    tmpl.Execute(w, dados)
+})
+```
+
+O `{{.Nome}}` é substituído pelo valor do campo `Nome` dos dados. Simples assim.
+
+### `html/template` vs `text/template` — segurança!
+
+| Pacote | O que faz com `<script>alert('xss')</script>` |
+|---|---|
+| `html/template` | Converte para `&lt;script&gt;...` — **seguro** ✅ |
+| `text/template` | Envia do jeito que está — **perigoso para HTML** ❌ |
+
+**Regra:** se vai gerar HTML, use `html/template`. Sempre.
+
+### `template.Must` — o que é?
+
+```go
+// Sem Must — você trata o erro
+tmpl, err := template.New("x").Parse(`<h1>{{.Nome}}</h1>`)
+if err != nil { log.Fatal(err) }
+
+// Com Must — panic se der erro (bom para templates fixos)
+tmpl := template.Must(template.New("x").Parse(`<h1>{{.Nome}}</h1>`))
+```
+
+Use `Must` para templates que você escreve no código (nunca mudam). Para templates carregados de arquivos em runtime, trate o erro.
+
+---
+
+## Servindo arquivos estáticos (CSS, JS, imagens)
+
+```go
+// Tudo em ./public/ fica acessível em /static/
 mux.Handle("GET /static/",
     http.StripPrefix("/static/", http.FileServer(http.Dir("./public"))))
 ```
 
-## Middleware
+| URL no navegador | Arquivo servido |
+|---|---|
+| `/static/style.css` | `./public/style.css` |
+| `/static/js/app.js` | `./public/js/app.js` |
 
-Funções que wrappam `http.Handler`:
+`StripPrefix` remove `/static/` da URL antes de procurar o arquivo na pasta `./public/`.
+
+---
+
+## Middleware — funções que "abraçam" o handler
+
+Middleware é uma função que roda **antes e/ou depois** do seu handler. Imagine como uma **cebola**: cada camada de middleware envolve o handler interno.
+
+```
+Request → [Log] → [Auth] → [SeuHandler] → Response
+```
+
+Um middleware de log que mede quanto tempo cada request leva:
 
 ```go
 func logMiddleware(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        start := time.Now()
-        next.ServeHTTP(w, r)
-        log.Printf("%s %s %v", r.Method, r.URL.Path, time.Since(start))
+        start := time.Now()           // ⏱️ Marca o início
+        next.ServeHTTP(w, r)          // Chama o próximo handler
+        log.Printf("%s %s %v",        // 📝 Registra depois
+            r.Method, r.URL.Path, time.Since(start))
     })
 }
+
+// Usando:
+http.ListenAndServe(":8080", logMiddleware(mux))
 ```
 
-## Quando usar frameworks
+### Como o middleware funciona, passo a passo:
 
-A stdlib (Go 1.22+) é suficiente para muitos casos. Frameworks como Chi, Gin e Echo adicionam **conveniência** (middleware chain, binding automático, validação) — não performance.
+1. Request chega → entra no `logMiddleware`
+2. `start := time.Now()` — anota a hora
+3. `next.ServeHTTP(w, r)` — passa a bola pro seu handler real
+4. Handler responde
+5. `log.Printf(...)` — imprime quanto tempo levou
+
+### Encadeando vários middlewares:
+
+```go
+// Leitura: auth roda primeiro, depois log, depois o mux
+handler := authMiddleware(logMiddleware(mux))
+http.ListenAndServe(":8080", handler)
+```
+
+---
+
+## Servidor em produção — timeouts são obrigatórios
+
+`http.ListenAndServe` é bom para aprender, mas em produção você precisa de timeouts:
+
+```go
+// ❌ Sem timeouts — um cliente lento pode travar o servidor
+http.ListenAndServe(":8080", mux)
+
+// ✅ Com timeouts — protege seu servidor
+server := &http.Server{
+    Addr:         ":8080",
+    Handler:      mux,
+    ReadTimeout:  10 * time.Second,   // tempo máximo para ler o request
+    WriteTimeout: 15 * time.Second,   // tempo máximo para escrever o response
+    IdleTimeout:  60 * time.Second,   // tempo máximo de conexão ociosa
+}
+log.Fatal(server.ListenAndServe())
+```
+
+---
+
+## Quando usar frameworks (Gin, Chi, Echo)?
+
+| Preciso de... | Stdlib basta? | Framework ajuda? |
+|---|---|---|
+| Rotas GET/POST com params | ✅ Sim (Go 1.22+) | — |
+| Middleware simples | ✅ Sim | — |
+| JSON request/response | ✅ Sim | — |
+| Validação automática de body | ❌ Não | ✅ Gin, Echo |
+| Binding de query params/headers | ❌ Manual | ✅ Gin, Echo |
+| Middleware chain organizado | 🟡 Possível | ✅ Chi, Echo |
+| Swagger/OpenAPI automático | ❌ Não | ✅ Swag + Gin |
+
+**Resumo:** a stdlib do Go 1.22+ é surpreendentemente completa. Use frameworks quando precisar de **conveniência extra** (validação, binding, documentação), não por performance — Go já é rápido de fábrica.

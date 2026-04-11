@@ -128,28 +128,185 @@ aplicacao:
 
 ---
 
-Funções em Go são **first-class citizens**: podem ser atribuídas a variáveis, passadas como argumentos e retornadas de outras funções. O tipo de uma função inclui os tipos dos parâmetros e dos retornos: `func(int, string) (float64, error)`. Funções podem retornar múltiplos valores — o padrão idiomático é `(T, error)`.
+## Funções são "cidadãs de primeira classe"
 
-## Parâmetros variádicos e closures
+Em Go, funções são como qualquer outro valor — você pode guardá-las em variáveis, passá-las como argumento e retorná-las de outras funções:
 
-Parâmetros variádicos (`...T`) recebem zero ou mais argumentos como um slice `[]T`. Para passar um slice existente: `f(s...)`.
+```go
+// Guardar numa variável
+dobro := func(n int) int { return n * 2 }
+fmt.Println(dobro(5))  // 10
 
-Funções anônimas (**closures**) capturam variáveis por **referência**, não por cópia.
+// Passar como argumento
+func aplicar(f func(int) int, valor int) int {
+    return f(valor)
+}
+fmt.Println(aplicar(dobro, 3))  // 6
+```
 
-> **Armadilha clássica:** em `for i := range s { go func() { use(i) }() }` todas as goroutines capturam a mesma variável `i`. Passe como argumento: `go func(v int) { use(v) }(i)`.
+## Múltiplos retornos — o jeito Go de lidar com erros
 
-> **Go 1.22+**: em módulos com `go 1.22+`, cada iteração de um `for` cria uma nova instância da variável de loop. O bug clássico foi corrigido. A forma explícita `go func(v int) { use(v) }(i)` ainda é a mais legível e recomendada por clareza.
+Em Go, funções podem retornar **mais de um valor**. O padrão mais comum é retornar o resultado **e** um erro:
 
-## defer
+```go
+func dividir(a, b float64) (float64, error) {
+    if b == 0 {
+        return 0, fmt.Errorf("divisão por zero")
+    }
+    return a / b, nil  // nil = sem erro
+}
 
-`defer` empurha uma chamada de função em uma pilha **LIFO** local à função corrente. Deferridos executam quando a função retorna, seja por `return` normal ou por `panic`.
+resultado, err := dividir(10, 3)
+if err != nil {
+    fmt.Println("Deu ruim:", err)
+    return
+}
+fmt.Println(resultado)  // 3.333...
+```
 
-- Os **argumentos de `defer` são avaliados imediatamente** (no momento do `defer`), não no momento da execução
-- Ordem: `defer f(1); defer f(2); defer f(3)` → executa `f(3)`, `f(2)`, `f(1)`
-- Use para garantir cleanup: `defer f.Close()`, `defer mu.Unlock()`
+> **Regra de ouro do Go:** sempre verifique o `err` antes de usar o resultado. Ignorar erros é a causa número 1 de bugs.
 
-## panic e recover
+## Parâmetros variádicos — aceitar qualquer quantidade
 
-`panic` interrompe a execução normal e começa a desenrolar a call stack, executando funções deferridas. Se chegar ao topo da goroutine sem ser recuperado, o programa termina.
+Às vezes você quer uma função que aceite 1, 5 ou 100 argumentos. Use `...` antes do tipo:
 
-`recover()` captura o valor passado ao panic — mas **apenas dentro de uma função deferrida diretamente**. `recover()` fora de `defer` retorna `nil`. Para re-panic: se a lógica de recover quiser propagar, chame `panic(v)` novamente.
+```go
+func soma(nums ...int) int {
+    total := 0
+    for _, n := range nums {
+        total += n
+    }
+    return total
+}
+
+soma(1, 2, 3)       // 6
+soma(10, 20)         // 30
+soma()               // 0 — zero argumentos também funciona
+```
+
+Dentro da função, `nums` é um `[]int` (slice) normal. Se você já tem um slice e quer passá-lo, use `...` no final:
+
+```go
+numeros := []int{1, 2, 3, 4, 5}
+soma(numeros...)  // 15
+```
+
+## Closures — funções que "lembram" do ambiente
+
+Uma **closure** é uma função que captura variáveis do ambiente onde foi criada. Mesmo depois que o ambiente "acabou", a closure continua acessando aquelas variáveis:
+
+```go
+func criarContador() func() int {
+    n := 0                    // variável "presa" na closure
+    return func() int {
+        n++                   // incrementa o n de cima
+        return n
+    }
+}
+
+contador := criarContador()
+fmt.Println(contador())  // 1
+fmt.Println(contador())  // 2
+fmt.Println(contador())  // 3 — o n persiste entre chamadas!
+```
+
+A closure captura a **variável em si** (por referência), não uma cópia do valor. Por isso `n` continua existindo e sendo incrementado.
+
+### A armadilha clássica das closures em loops
+
+```go
+// ❌ Bug (em Go antes de 1.22)
+for i := 0; i < 3; i++ {
+    go func() {
+        fmt.Println(i)  // todas imprimem 3! (capturam a mesma variável i)
+    }()
+}
+
+// ✅ Solução: passar como argumento (cria cópia)
+for i := 0; i < 3; i++ {
+    go func(v int) {
+        fmt.Println(v)  // imprime 0, 1, 2 corretamente
+    }(i)
+}
+```
+
+> **Go 1.22+:** esse bug foi corrigido — cada iteração cria uma nova variável. Mas a forma com argumento explícito ainda é mais clara e recomendada.
+
+## `defer` — "faça isso quando eu sair"
+
+`defer` agenda uma função para executar **quando a função atual terminar**. É perfeito para limpeza: fechar arquivos, liberar locks, etc.
+
+```go
+func lerArquivo() {
+    f, err := os.Open("dados.txt")
+    if err != nil { return }
+    defer f.Close()  // ← vai executar quando lerArquivo() retornar
+
+    // ... usa o arquivo tranquilamente
+    // não importa como a função termine, f.Close() será chamado
+}
+```
+
+Três coisas para lembrar sobre `defer`:
+
+**1. Os argumentos são avaliados na hora, não depois:**
+
+```go
+x := 10
+defer fmt.Println(x)  // registra o valor 10 agora
+x = 20
+// quando a função retornar, imprime 10 (não 20)
+```
+
+**2. Múltiplos defers executam em ordem inversa (LIFO — último primeiro):**
+
+```go
+defer fmt.Println("primeiro")
+defer fmt.Println("segundo")
+defer fmt.Println("terceiro")
+// saída: terceiro, segundo, primeiro
+```
+
+**3. Cuidado com defer dentro de loop:**
+
+```go
+// ❌ Perigoso — acumula arquivos abertos até o fim da função!
+for _, nome := range arquivos {
+    f, _ := os.Open(nome)
+    defer f.Close()  // só fecha quando a função INTEIRA retornar
+}
+
+// ✅ Solução: colocar numa função separada
+for _, nome := range arquivos {
+    processarArquivo(nome)  // defer dentro dessa função fecha imediatamente
+}
+```
+
+## `panic` e `recover` — para emergências
+
+`panic` é como puxar o freio de emergência — interrompe tudo e começa a "desenrolar" a pilha de chamadas:
+
+```go
+panic("algo terrível aconteceu!")
+// programa para aqui e mostra stack trace
+```
+
+`recover` captura o panic e permite que o programa continue — mas **só funciona dentro de um `defer`**:
+
+```go
+func operacaoSegura() (err error) {
+    defer func() {
+        if r := recover(); r != nil {
+            err = fmt.Errorf("recuperado: %v", r)
+        }
+    }()
+
+    // se algo causar panic aqui, o defer captura
+    panic("ops!")
+}
+
+err := operacaoSegura()
+fmt.Println(err)  // "recuperado: ops!" — programa continua rodando
+```
+
+> **Regra prática:** use `panic` quase nunca. Use `error` para erros esperados (arquivo não encontrado, input inválido). Reserve `panic` para situações realmente impossíveis (bug no código, estado corrompido). Se você está em dúvida, retorne `error`.
