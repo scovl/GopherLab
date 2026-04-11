@@ -173,7 +173,7 @@ body {
 
 .main-content > * {
   width: 100%;
-  max-width: 860px;
+  max-width: 1000px;
 }
 
 .page-container {
@@ -932,7 +932,7 @@ body {
 
 /* --- Lesson View --- */
 .lesson-view {
-  max-width: 800px;
+  max-width: 1000px;
 }
 
 .lesson-breadcrumb {
@@ -1727,6 +1727,84 @@ body {
   word-break: break-word;
   color: var(--text-primary);
   background: var(--bg-primary);
+}
+
+/* ── Nota pós-execução ─────────────────────────────────────────── */
+.nota-pos {
+  margin-top: 1.25rem;
+  border: 1px solid #c8e6c9;
+  border-left: 4px solid #43a047;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f9fef9;
+  animation: nota-fade-in 0.35s ease;
+}
+
+@keyframes nota-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.nota-pos-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  background: #e8f5e9;
+  border-bottom: 1px solid #c8e6c9;
+}
+
+.nota-pos-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.nota-pos-titulo {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #2e7d32;
+  letter-spacing: 0.01em;
+}
+
+.nota-pos-body {
+  padding: 1rem 1.25rem;
+  font-size: 0.92rem;
+  line-height: 1.7;
+  color: var(--text-primary);
+}
+
+.nota-pos-body p { margin: 0 0 0.75rem; }
+.nota-pos-body p:last-child { margin-bottom: 0; }
+.nota-pos-body ul { margin: 0.25rem 0 0.75rem 1.25rem; padding: 0; }
+.nota-pos-body li { margin-bottom: 0.25rem; }
+.nota-pos-body code {
+  background: #e8f5e9;
+  color: #1b5e20;
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.85em;
+}
+.nota-pos-body h4 {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  color: #2e7d32;
+}
+.nota-pos-body strong { color: var(--text-primary); }
+
+[data-theme="dark"] .nota-pos {
+  background: rgba(67, 160, 71, 0.06);
+  border-color: rgba(67, 160, 71, 0.3);
+  border-left-color: #66bb6a;
+}
+[data-theme="dark"] .nota-pos-header {
+  background: rgba(67, 160, 71, 0.12);
+  border-bottom-color: rgba(67, 160, 71, 0.2);
+}
+[data-theme="dark"] .nota-pos-titulo { color: #81c784; }
+[data-theme="dark"] .nota-pos-body code {
+  background: rgba(67, 160, 71, 0.15);
+  color: #a5d6a7;
 }
 
 /* --- GitHub Section --- */

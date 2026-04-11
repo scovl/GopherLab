@@ -20,6 +20,7 @@ export interface VesaContent {
     desafio: string;
     dicas: string[];
     codeTemplate?: string;
+    notaPos?: string;
   };
   socializacao: {
     discussao?: string;

@@ -5,32 +5,61 @@ estimatedMinutes: 30
 recursos:
   - https://go.dev/doc/
   - https://go.dev/blog/go-brand
-  - https://www.youtube.com/watch?v=rKnDgT73v8s
+  - https://youtu.be/WiGU_ZB-u0w?si=XjTuIuFwODaclfBE
 experimentacao:
-  desafio: Pesquise e liste 5 empresas que utilizam Go em produção e qual problema cada uma resolve com a linguagem.
+  desafio: "Execute o programa abaixo — é o Hello, World! tradicional de Go. Depois troque a mensagem para se apresentar: imprima seu nome e por que você está aprendendo Go."
   dicas:
-    - Procure no site oficial go.dev/solutions
-    - Pense em empresas como Google, Uber, Twitch, Docker, Kubernetes
-    - Anote qual tipo de sistema cada empresa desenvolve com Go
+    - "Use `fmt.Println(\"Texto aqui\")` para imprimir qualquer texto."
+    - "Você pode chamar `fmt.Println` mais de uma vez para imprimir várias linhas."
+    - "Strings em Go usam aspas duplas `\"`, nunca aspas simples."
+  codeTemplate: |
+    package main
+
+    import "fmt"
+
+    func main() {
+    	fmt.Println("Hello, Go!")
+    }
+  notaPos: |
+    #### O que aconteceu nesse código?
+
+    **`package main`** — todo programa Go pertence a um pacote. O pacote `main` é especial: indica que este arquivo é um **executável**, não uma biblioteca.
+
+    **`import "fmt"`** — importa o pacote `fmt` (format) da biblioteca padrão. Ele fornece funções para imprimir texto e formatar saída.
+
+    **`func main()`** — a função `main` é o **ponto de entrada** do programa. É a primeira coisa que o Go executa quando você roda `go run`.
+
+    **`fmt.Println("Hello, Go!")`** — chama a função `Println` do pacote `fmt`. Ela imprime o texto e adiciona uma quebra de linha automaticamente.
 socializacao:
-  discussao: Por que Go se tornou tão popular para microsserviços e sistemas distribuídos?
+  discussao: O que te motivou a começar a aprender Go? O que mais te chamou atenção na história da linguagem?
   pontos:
-    - Compare com sua experiência em outras linguagens
-    - Discuta as vantagens da compilação estática e binário único
-    - Pense no modelo de concorrência com goroutines vs threads OS
+    - Você conhecia algum dos criadores (Ken Thompson, Rob Pike) antes de estudar Go?
+    - O fato de Go ter nascido por frustração com C++ muda sua percepção da linguagem?
+    - O que significa para você que Go mantém compatibilidade retroativa desde 2012?
   diasDesafio: Dias 1–7
-  sugestaoBlog: "Por que escolhi Go: história, motivações e meu setup inicial"
-  hashtagsExtras: '#golang #beginner'
+  sugestaoBlog: "Meu primeiro Hello, World! em Go: por que escolhi essa linguagem"
+  hashtagsExtras: '#golang #beginner #helloworld'
 aplicacao:
-  projeto: Crie um documento resumindo a história do Go e suas principais características.
+  projeto: Escreva um programa Go que se apresente para o mundo — imprima seu nome, de onde você vem e por que está aprendendo Go, usando apenas `fmt.Println`.
   requisitos:
-    - "Incluir linha do tempo: 2007 (criação), 2009 (anúncio), 2012 (v1.0), 2018 (módulos), 2022 (generics)"
-    - Listar pelo menos 3 características únicas do Go
-    - Mencionar casos de uso reais em produção
+    - O programa deve ter `package main` e `import "fmt"`
+    - Usar `fmt.Println` pelo menos 3 vezes
+    - Imprimir nome, origem e motivação para aprender Go
+    - O programa deve compilar e rodar sem erros
   criterios:
-    - Clareza na escrita
-    - Informações corretas e atualizadas
-    - Organização lógica
+    - Código compila e produz saída legível
+    - Pelo menos 3 linhas de texto impresso
+    - Estrutura correta do programa Go (package, import, func main)
+  starterCode: |
+    package main
+
+    import "fmt"
+
+    func main() {
+    	fmt.Println("Olá! Meu nome é ...")
+    	fmt.Println("Sou de ...")
+    	fmt.Println("Estou aprendendo Go porque ...")
+    }
 ---
 
 Go (ou Golang) foi iniciado em setembro de 2007 por **Robert Griesemer**, **Rob Pike** e **Ken Thompson** enquanto aguardavam uma compilação C++ de 45 minutos no Google. O design começou em um documento interno de Pike e Thompson. A linguagem foi anunciada publicamente em novembro de 2009, com a versão 1.0 lançada em março de 2012. A promessa da v1.0 é mantida até hoje: **compatibilidade retroativa total** — qualquer código escrito para Go 1.x continua compilando e funcionando nas versões futuras.

@@ -43,6 +43,29 @@ export function SocializacaoContent({ content }: Readonly<{ content: VesaContent
             <code>#100DaysOfCode</code>. A accountability pública acelera o aprendizado e conecta
             você com uma comunidade global de desenvolvedores.
           </p>
+          <div className="challenge-100days-links">
+            <p className="challenge-label">📖 Leia antes de começar:</p>
+            <ul className="challenge-links-list">
+              <li>
+                <a
+                  href="https://www.freecodecamp.org/portuguese/news/desafio-100daysofcode-qual-e-a-sua-origem-e-por-que-voce-deveria-fazer-o-desafio/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  O que é o #100DaysOfCode e por que participar — freeCodeCamp (pt-BR)
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://www.100daysofcode.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Site oficial do #100DaysOfCode
+                </a>
+              </li>
+            </ul>
+          </div>
 
           <div className="challenge-post-template">
             <label htmlFor="post-template-text" className="challenge-label">

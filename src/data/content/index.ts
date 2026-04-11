@@ -39,6 +39,8 @@ for (const [path, raw] of Object.entries(rawFiles)) {
       experimentacao: {
         desafio: String((data.experimentacao as Record<string, unknown>)?.desafio ?? ''),
         dicas: arr((data.experimentacao as Record<string, unknown>)?.dicas),
+        codeTemplate: ((data.experimentacao as Record<string, unknown>)?.codeTemplate as string) || undefined,
+        notaPos: ((data.experimentacao as Record<string, unknown>)?.notaPos as string) || undefined,
       },
       socializacao: {
         discussao: String((data.socializacao as Record<string, unknown>)?.discussao ?? '') || undefined,
@@ -51,6 +53,7 @@ for (const [path, raw] of Object.entries(rawFiles)) {
         projeto: String((data.aplicacao as Record<string, unknown>)?.projeto ?? ''),
         requisitos: arr((data.aplicacao as Record<string, unknown>)?.requisitos),
         criterios: arr((data.aplicacao as Record<string, unknown>)?.criterios),
+        starterCode: ((data.aplicacao as Record<string, unknown>)?.starterCode as string) || undefined,
       },
     },
   };

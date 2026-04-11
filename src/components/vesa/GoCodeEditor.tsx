@@ -1,13 +1,21 @@
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
+
+const mdComponents = {
+  a: ({ href, children }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>
+  ),
+};
 
 export interface GoCodeEditorProps {
   referenceCode?: string;
   referenceLabel: string;
   lessonId: string;
   downloadName: string;
+  notaPos?: string;
 }
 
-export function GoCodeEditor({ referenceCode, referenceLabel, lessonId: _lessonId, downloadName }: Readonly<GoCodeEditorProps>) {
+export function GoCodeEditor({ referenceCode, referenceLabel, lessonId: _lessonId, downloadName, notaPos }: Readonly<GoCodeEditorProps>) {
   const [code, setCode] = React.useState('');
   const [running, setRunning] = React.useState(false);
   const [output, setOutput] = React.useState<{ text: string; isError: boolean } | null>(null);
@@ -102,6 +110,21 @@ export function GoCodeEditor({ referenceCode, referenceLabel, lessonId: _lessonI
         className="playground-editor"
         value={code}
         onChange={e => setCode(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === 'Tab') {
+            e.preventDefault();
+            const el = e.currentTarget;
+            const start = el.selectionStart;
+            const end = el.selectionEnd;
+            const next = code.slice(0, start) + '\t' + code.slice(end);
+            setCode(next);
+            // restore cursor after React re-render
+            requestAnimationFrame(() => {
+              el.selectionStart = start + 1;
+              el.selectionEnd = start + 1;
+            });
+          }
+        }}
         spellCheck={false}
         aria-label="Editor de código Go"
         placeholder={'// Digite seu código aqui\npackage main\n\nimport "fmt"\n\nfunc main() {\n\t\n}'}
@@ -109,15 +132,29 @@ export function GoCodeEditor({ referenceCode, referenceLabel, lessonId: _lessonI
       />
 
       {output && (
-        <section
-          className={`playground-output ${output.isError ? 'playground-output-error' : 'playground-output-ok'}`}
-          aria-label={output.isError ? 'Erros de compilação' : 'Saída do programa'}
-        >
-          <div className="playground-output-label">
-            {output.isError ? '✗ Erro' : '✓ Saída'}
-          </div>
-          <pre className="playground-output-text">{output.text}</pre>
-        </section>
+        <>
+          <section
+            className={`playground-output ${output.isError ? 'playground-output-error' : 'playground-output-ok'}`}
+            aria-label={output.isError ? 'Erros de compilação' : 'Saída do programa'}
+          >
+            <div className="playground-output-label">
+              {output.isError ? '✗ Erro' : '✓ Saída'}
+            </div>
+            <pre className="playground-output-text">{output.text}</pre>
+          </section>
+
+          {!output.isError && notaPos && (
+            <div className="nota-pos">
+              <div className="nota-pos-header">
+                <span className="nota-pos-icon">💡</span>
+                <span className="nota-pos-titulo">O que aconteceu nesse código?</span>
+              </div>
+              <div className="nota-pos-body">
+                <ReactMarkdown components={mdComponents}>{notaPos}</ReactMarkdown>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

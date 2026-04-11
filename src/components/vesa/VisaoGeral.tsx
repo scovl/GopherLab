@@ -1,4 +1,5 @@
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import type { VesaContent } from '../../types';
 import { getLessonContent } from '../../data/content';
 
@@ -17,7 +18,7 @@ export function VisaoGeralContent({ content, lessonId }: Readonly<{ content: Ves
       <div className="explanation-block">
         {markdownContent ? (
           <div className="markdown-content">
-            <ReactMarkdown>{markdownContent}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdownContent}</ReactMarkdown>
           </div>
         ) : content.explicacao ? (
           content.explicacao.split('\n').filter(Boolean).map((p, i) => <p key={i}>{p}</p>)
