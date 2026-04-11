@@ -5,10 +5,11 @@ import { useRoadmap } from '../hooks/useRoadmap';
 
 interface SidebarProps {
   onNavigate: (view: 'roadmap' | 'accessibility') => void;
+  onOpenIrc: () => void;
   currentView: string;
 }
 
-export function Sidebar({ onNavigate, currentView }: Readonly<SidebarProps>) {
+export function Sidebar({ onNavigate, onOpenIrc, currentView }: Readonly<SidebarProps>) {
   const { settings, updateSetting } = useAccessibility();
   const { progress } = useProgress();
   const { totalLessons } = useRoadmap();
@@ -76,18 +77,15 @@ export function Sidebar({ onNavigate, currentView }: Readonly<SidebarProps>) {
           <span>Acessibilidade</span>
         </button>
 
-        <a
+        <button
           className="sidebar-nav-item sidebar-irc-btn"
-          href="https://kiwiirc.com/nextclient/irc.libera.chat/#aprendago"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Abrir chat IRC do canal #aprendago na Libera.Chat (abre em nova aba)"
+          onClick={onOpenIrc}
+          aria-label="Abrir chat IRC do canal #aprendago na Libera.Chat"
           title="Chat IRC — #aprendago @ Libera.Chat"
         >
           <span aria-hidden="true">💬</span>
           <span>Chat IRC</span>
-          <span className="sidebar-irc-badge" aria-hidden="true">↗</span>
-        </a>
+        </button>
       </nav>
 
       <div className="sidebar-footer">
