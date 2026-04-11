@@ -2166,16 +2166,35 @@ body {
 /* --- Footer --- */
 .app-footer {
   margin-top: auto;
-  padding: 1.5rem 0 0.5rem;
+  padding: 2rem 0 1rem;
   text-align: center;
-  font-size: 0.8rem;
-  color: var(--text-muted, #6b7280);
   width: 100%;
+}
+
+.app-footer__divider {
+  display: block;
+  width: 3rem;
+  height: 1px;
+  background: var(--border, #e5e7eb);
+  margin: 0 auto 1.25rem;
+  opacity: 0.6;
+}
+
+.app-footer p {
+  margin: 0 0 0.3rem;
+  font-size: 0.85rem;
+  color: var(--text-muted, #6b7280);
+}
+
+.app-footer__sub {
+  font-size: 0.75rem !important;
+  opacity: 0.7;
 }
 
 .app-footer a {
   color: var(--text-muted, #6b7280);
   text-decoration: none;
+  font-weight: 500;
   transition: color 0.2s;
 }
 

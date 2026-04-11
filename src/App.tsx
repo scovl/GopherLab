@@ -95,9 +95,16 @@ export function App() {
 
         {currentView !== 'irc' && (
           <footer className="app-footer">
-            <a href="https://scovl.github.io/" target="_blank" rel="noopener noreferrer">
-              Vitor Lobo
-            </a>
+            <span className="app-footer__divider" aria-hidden="true" />
+            <p>
+              Feito com ♥ por{' '}
+              <a href="https://scovl.github.io/" target="_blank" rel="noopener noreferrer">
+                Vitor Lobo
+              </a>
+            </p>
+            <p className="app-footer__sub">
+              Projeto open source — contribuições são bem-vindas
+            </p>
           </footer>
         )}
       </div>
