@@ -5,11 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"go/parser"
+	"go/token"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -20,10 +23,49 @@ const (
 	maxConcurrent = 4
 	errInternal   = "erro interno"
 	goModFile     = "go.mod"
-	goModContent  = "module sandbox\n\ngo 1.22\n"
+	goModContent  = "module sandbox\n\ngo 1.23\n"
 )
 
 var sem = make(chan struct{}, maxConcurrent)
+
+// sandboxBaseDir is the parent for sandbox execution directories.
+// Set SANDBOX_BASE to a non-temp path to avoid the Go 1.23+ restriction
+// on go.mod files inside the system temp root (os.TempDir()).
+var sandboxBaseDir = os.Getenv("SANDBOX_BASE")
+
+var blockedImports = map[string]bool{
+	"os/exec":     true,
+	"syscall":     true,
+	"unsafe":      true,
+	"plugin":      true,
+	"runtime/cgo": true,
+	"net":         true,
+	"net/http":    true,
+	"net/rpc":     true,
+	"net/smtp":    true,
+	"debug/elf":   true,
+	"debug/macho": true,
+	"debug/pe":    true,
+	"crypto/x509": true,
+}
+
+func validateImports(code string) error {
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "", code, parser.ImportsOnly)
+	if err != nil {
+		return nil // parse errors will be caught by the compiler
+	}
+	for _, imp := range f.Imports {
+		path := strings.Trim(imp.Path.Value, `"`)
+		if blockedImports[path] {
+			return fmt.Errorf("import %q não permitido no sandbox", path)
+		}
+		if strings.HasPrefix(path, "net/") {
+			return fmt.Errorf("import %q não permitido no sandbox", path)
+		}
+	}
+	return nil
+}
 
 type runRequest struct {
 	Body string `json:"body"`
@@ -94,7 +136,12 @@ func handleRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dir, err := os.MkdirTemp("", "gorun-*")
+	if err := validateImports(req.Body); err != nil {
+		json.NewEncoder(w).Encode(runResponse{Errors: err.Error()})
+		return
+	}
+
+	dir, err := os.MkdirTemp(sandboxBaseDir, "gorun-*")
 	if err != nil {
 		log.Printf("MkdirTemp: %v", err)
 		json.NewEncoder(w).Encode(runResponse{Errors: errInternal})
@@ -181,7 +228,7 @@ func handleLab(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dir, err := os.MkdirTemp("", "golab-*")
+	dir, err := os.MkdirTemp(sandboxBaseDir, "golab-*")
 	if err != nil {
 		log.Printf("MkdirTemp: %v", err)
 		json.NewEncoder(w).Encode(runResponse{Errors: errInternal})
@@ -199,6 +246,18 @@ func handleLab(w http.ResponseWriter, r *http.Request) {
 		name := filepath.Base(f.Name)
 		if name == "." || name == ".." || name == "" {
 			json.NewEncoder(w).Encode(runResponse{Errors: "nome de arquivo inválido: " + f.Name})
+			return
+		}
+		if name == "go.mod" || name == "go.sum" {
+			json.NewEncoder(w).Encode(runResponse{Errors: "não é permitido enviar go.mod ou go.sum"})
+			return
+		}
+		if !strings.HasSuffix(name, ".go") {
+			json.NewEncoder(w).Encode(runResponse{Errors: "apenas arquivos .go são aceitos"})
+			return
+		}
+		if err := validateImports(f.Body); err != nil {
+			json.NewEncoder(w).Encode(runResponse{Errors: err.Error()})
 			return
 		}
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(f.Body), 0600); err != nil {
@@ -270,7 +329,7 @@ func main() {
 }
 
 func warmCache() {
-	dir, err := os.MkdirTemp("", "gowarm-*")
+	dir, err := os.MkdirTemp(sandboxBaseDir, "gowarm-*")
 	if err != nil {
 		return
 	}

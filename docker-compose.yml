@@ -7,6 +7,13 @@ services:
     container_name: aprenda-go-runner
     mem_limit: 512m
     cpus: '1.0'
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    networks:
+      - backend
 
   # Run Go tests: docker compose --profile test run --rm runner-test
   runner-test:
@@ -30,6 +37,9 @@ services:
     container_name: aprenda-go
     depends_on:
       - runner
+    networks:
+      - default
+      - backend
 
   # Dev mode: hot reload — docker compose --profile dev up
   aprenda-go-dev:
@@ -46,3 +56,7 @@ services:
 
 volumes:
   node_modules:
+
+networks:
+  backend:
+    internal: true
