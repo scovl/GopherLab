@@ -1640,6 +1640,234 @@ body {
   white-space: pre;
 }
 
+/* ===================== LabEditor ===================== */
+
+.lab-editor {
+  margin: 1.5rem 0;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  overflow: hidden;
+}
+
+.lab-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 1rem;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+  gap: 0.75rem;
+}
+
+.lab-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.lab-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.lab-mode-toggle {
+  display: flex;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.lab-mode-btn {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.lab-mode-btn:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.lab-mode-btn.active {
+  background: var(--accent-primary);
+  color: #fff;
+}
+
+.lab-mode-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.lab-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.4rem 0.75rem;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+  overflow-x: auto;
+}
+
+.lab-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-sm);
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.8rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.lab-tab:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.lab-tab.active {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.lab-tab-test {
+  color: var(--accent-warning, #f59e0b);
+}
+
+.lab-tab-close {
+  margin-left: 0.1rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0 0.1rem;
+  line-height: 1;
+}
+
+.lab-tab-close:hover {
+  color: var(--accent-danger, #ef4444);
+}
+
+.lab-tab-add {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.8rem;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.lab-tab-add:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-primary);
+}
+
+.lab-new-file-input {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.8rem;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  background: var(--bg-primary);
+  border: 1px solid var(--accent-primary);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  width: 12rem;
+  outline: none;
+}
+
+.lab-editor-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.lab-code-editor {
+  width: 100%;
+  min-height: 260px;
+  padding: 1rem;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: none;
+  border-bottom: 1px solid var(--border-color);
+  resize: vertical;
+  tab-size: 4;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.lab-output {
+  padding: 0.75rem 1rem;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.82rem;
+  min-height: 3.5rem;
+  background: var(--bg-primary);
+}
+
+.lab-output-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.35rem;
+  color: var(--text-muted);
+}
+
+.lab-output-text {
+  white-space: pre-wrap;
+  margin: 0;
+  line-height: 1.55;
+}
+
+.lab-output-error .lab-output-label {
+  color: var(--accent-danger, #ef4444);
+}
+
+.lab-output-ok .lab-output-label {
+  color: var(--accent-success, #22c55e);
+}
+
+.lab-output-error .lab-output-text {
+  color: var(--accent-danger, #ef4444);
+}
+
+.lab-tip {
+  padding: 0.5rem 1rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  line-height: 1.5;
+}
+
+.lab-tip code {
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  padding: 0 0.3em;
+  font-size: 0.85em;
+}
+
 .github-links {
   display: flex;
   flex-wrap: wrap;

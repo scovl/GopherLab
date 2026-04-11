@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { VesaPhase, VesaContent, VESA_LABELS } from '../types';
 import { useProgress } from '../context/ProgressContext';
+import { LabEditor, LabEditorFile } from './LabEditor';
 
 interface VesaPhasesProps {
   vesa: VesaContent;
@@ -1240,9 +1241,12 @@ func main() {
 function AplicacaoContent({ content, lessonId }: Readonly<{ content: VesaContent['aplicacao']; lessonId: string }>) {
   const { isLessonCompleted, completeLesson, uncompleteLesson } = useProgress();
   const completed = isLessonCompleted(lessonId);
-
-  const referenceCode = content.starterCode ?? STARTER_CODES[lessonId] ?? `package main\n\nimport "fmt"\n\nfunc main() {\n\tfmt.Println("Hello, Go!")\n}`;
   const repoSlug = lessonId.replace(/[^a-z0-9]+/g, '-');
+
+  const starterBody = content.starterCode ?? STARTER_CODES[lessonId] ?? `package main\n\nimport "fmt"\n\nfunc main() {\n\tfmt.Println("Hello, Go!")\n}`;
+  const initialFiles: LabEditorFile[] = content.labFiles && content.labFiles.length > 0
+    ? content.labFiles
+    : [{ name: 'main.go', body: starterBody }];
 
   return (
     <div className="phase-content">
@@ -1269,12 +1273,7 @@ function AplicacaoContent({ content, lessonId }: Readonly<{ content: VesaContent
         </ul>
       </div>
 
-      <GoCodeEditor
-        referenceCode={referenceCode}
-        referenceLabel="Código de referência"
-        lessonId={lessonId}
-        downloadName={repoSlug}
-      />
+      <LabEditor initialFiles={initialFiles} projectSlug={repoSlug} />
 
       {/* GitHub section */}
       <div className="github-section">
@@ -1287,14 +1286,13 @@ function AplicacaoContent({ content, lessonId }: Readonly<{ content: VesaContent
             <a href="https://github.com/new" target="_blank" rel="noopener noreferrer">github.com/new</a>{'. Sugestão de nome: '}<code>aprenda-go-{repoSlug}</code>
           </li>
           <li>
-            <strong>Inicialize localmente</strong> após baixar o .go:
+            <strong>Inicialize o módulo Go</strong> na pasta do projeto:
             <pre className="github-code-snippet">{`mkdir aprenda-go-${repoSlug} && cd aprenda-go-${repoSlug}
 git init
-cp ~/Downloads/${repoSlug}.go main.go
 go mod init github.com/SEU_USUARIO/aprenda-go-${repoSlug}`}</pre>
           </li>
           <li>
-            <strong>Primeiro commit</strong>:
+            <strong>Copie seus arquivos</strong> e faça o primeiro commit:
             <pre className="github-code-snippet">{`git add .
 git commit -m "feat: ${content.projeto.slice(0, 50)}"`}</pre>
           </li>

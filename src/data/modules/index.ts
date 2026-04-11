@@ -1,0 +1,14 @@
+export { introModule } from './intro';
+export { foundationModule } from './foundation';
+export { stdlibModule } from './stdlib';
+export { concorrenciaModule } from './concorrencia';
+export { errosModule } from './erros';
+export { testesModule } from './testes';
+export { apisModule } from './apis';
+export { bancoDadosModule } from './banco-dados';
+export { genericsModule } from './generics';
+export { solidModule } from './solid';
+export { cleanArchModule } from './clean-arch';
+export { implementacoesModule } from './implementacoes';
+export { toolingModule } from './tooling';
+export { deployModule } from './deploy';

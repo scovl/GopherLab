@@ -23,6 +23,7 @@ export interface VesaContent {
     requisitos: string[];
     criterios: string[];
     starterCode?: string;
+    labFiles?: Array<{ name: string; body: string }>;
   };
 }
 
