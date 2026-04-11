@@ -1,4 +1,4 @@
-import { Module } from '../../types';
+﻿import { Module } from '../../types';
 
 export const introModule: Module = {
   id: 'intro',
@@ -14,7 +14,7 @@ export const introModule: Module = {
       estimatedMinutes: 30,
       vesa: {
         visaoGeral: {
-          explicacao: 'Go (ou Golang) foi criado em 2007 por Robert Griesemer, Rob Pike e Ken Thompson no Google e anunciado publicamente em 2009. A versão 1.0 saiu em 2012 garantindo compatibilidade retroativa. Marcos importantes: módulos em Go 1.11 (2018) e generics em Go 1.18 (2022). Go nasceu da frustração com linguagens existentes para sistemas distribuídos — compilação lenta do C++, complexidade do Java e a necessidade de uma linguagem simples, rápida e com concorrência nativa.',
+          explicacao: 'Go (ou Golang) foi iniciado em setembro de 2007 por Robert Griesemer, Rob Pike e Ken Thompson enquanto aguardavam uma compilação C++ de 45 minutos no Google. O design começou em um documento interno de Pike e Thompson. A linguagem foi anunciada publicamente em novembro de 2009, com a versão 1.0 langada em março de 2012. A promessa da v1.0 e a ainda mantida: compatibilidade retroativa total -- qualquer código escrito para Go 1.x continua compilando e funcionando nas versões futuras.\n\nMarcos históricos: Go 1.5 (2015) reescreveu o compilador e runtime em Go (antes era C). Go 1.11 (2018) introduziu Go Modules, resolvendo o problema de gerenciamento de dependências. Go 1.13 (2019) adicionou suporte a novas formas de literais numéricos (0b, 0o, _). Go 1.18 (2022) trouxe generics -- a feature mais requisitada em anos. Go 1.21 (2023) adicionou funções embutidas min/max, slices/maps/cmp packages na stdlib, e log/slog para logging estruturado.\n\nOs três criadores têm histórias ilustres: Ken Thompson criou Unix e C (Turing Award 1983) e co-criou UTF-8. Rob Pike trabalhou com Thompson em Unix e Plan 9, criou o pacote utf8. Ambos são responsabilidade direta pelo fato de Go ser nativamente UTF-8. Go é uma das poucas linguagens cujo compilador é escrito na própria linguagem depois de poucos anos, demonstrando auto-suficiência.',
           recursos: [
             'https://go.dev/doc/',
             'https://go.dev/blog/go-brand',
@@ -58,7 +58,7 @@ export const introModule: Module = {
       estimatedMinutes: 20,
       vesa: {
         visaoGeral: {
-          explicacao: 'Go foi projetado para resolver problemas reais de engenharia em larga escala: compilação rápida, execução eficiente, facilidade de manutenção, suporte nativo à concorrência e um ecossistema de ferramentas robusto. A linguagem prioriza simplicidade — tem apenas 25 palavras reservadas. Compila para binário estático (deploy sem dependências), tem garbage collector otimizado para baixa latência e um modelo de concorrência baseado em CSP (Communicating Sequential Processes).',
+          explicacao: 'Go foi projetado com princípios explícitos: simplicidade radial sobre expressividade. A linguagem tem exatamente 25 palavras-chave (keywords) -- menos que Python, Java ou C++. Não há herança, overloading de operadores, coerção implícita, ou assertions de tipo implícitas. Qualquer idiom que parecesse "muito esperto" foi deliberadamente excluído.\n\nFatores que fazem Go popular em infraestrutura: (1) Compilação ultra-rápida -- projetos grandes compilam em segundos; (2) Binário estático auto-contido -- deploy é copiar um arquivo, sem dependencias externas, Docker images minimalistas; (3) Garbage collector de baixa latência (pausas <1ms desde Go 1.14); (4) Goroutines -- concorrência nativa sem lidar com threads OS; (5) Toolchain integrado -- go fmt, go test, go vet, go build, go doc, go mod, pprof.\n\nCasos de uso ideais: APIs REST/gRPC, microservices, CLIs, ferramentas DevOps (k8s, Docker, Terraform, Hugo são escritos em Go), proxies reversos, sistemas de filas, parsers/compilers. Go não é ideal para: frontend web (use JavaScript/WASM), ML/Data Science (use Python), mobile (use Swift/Kotlin/Flutter), jogos (use C++/Rust). O mercado paga bem por Go: é consistentemente uma das linguagens mais bem-pagas em surveys do Stack Overflow.', 
           recursos: [
             'https://go.dev/solutions/',
             'https://go.dev/doc/faq',
@@ -97,7 +97,7 @@ export const introModule: Module = {
       estimatedMinutes: 30,
       vesa: {
         visaoGeral: {
-          explicacao: 'A instalação do Go é simples: baixe em go.dev/dl, instale e verifique com `go version`. O Go usa GOPATH (workspace padrão ~/go) e GOROOT (diretório de instalação). Todo programa Go começa com `package main` e a função `main()` é o ponto de entrada. O pacote `fmt` fornece formatação de I/O.',
+          explicacao: 'A instalação do Go é um arquivo único: baixe em go.dev/dl (instalador .msi no Windows, .pkg no macOS, tarball no Linux). O instalador configura automaticamente o PATH. Verifique com go version e go env GOROOT. GOROOT é o diretório de instalação (ex: /usr/local/go). GOPATH (padrão ~/go) era o workspace obrigatório antes de Go Modules -- hoje, só é relevante para go install (binários vão para $GOPATH/bin).\n\nTodo programa Go pertence a um package. O package main com a função main() é o ponto de entrada de um executável. import lista os packages usados -- packages não usados causam erro de compilação (o compilador é rigoroso). go mod init github.com/user/repo cria go.mod, que define o module path e a versão mínima do Go exigida. go run main.go compila e executa num passo; go build compila para binário; go install compila e instala em $GOPATH/bin.\n\nO compilador Go é rápido por design: sem headers, sem macros, dependências implícitas proibidas, regras de inicialização simples. Um projeto de 100k linhas compila em segundos. Cross-compilation é nativa: GOOS=linux GOARCH=amd64 go build compila para Linux x86-64 de qualquer plataforma. Arquiteturas suportadas: amd64, arm64, arm, 386, riscv64, ppc64, s390x, wasm.', 
           codeExample: 'package main\n\nimport "fmt"\n\nfunc main() {\n\tfmt.Println("Olá, Go!")\n}\n\n// Executar:\n// go mod init meuprojeto\n// go run main.go',
           recursos: [
             'https://go.dev/dl/',
@@ -111,7 +111,7 @@ export const introModule: Module = {
             'No Windows: instalador .msi, no macOS: .pkg ou brew, no Linux: tarball em /usr/local',
             'Verifique: go version && go env',
             'go mod init inicializa um módulo — necessário para qualquer projeto',
-            'fmt.Printf não adiciona \\n automaticamente',
+            'fmt.Printf não adiciona newline automaticamente -- use a sequencia de nova linha no formato',
           ],
         },
         socializacao: {
@@ -143,7 +143,7 @@ export const introModule: Module = {
       estimatedMinutes: 20,
       vesa: {
         visaoGeral: {
-          explicacao: 'O VS Code com a extensão oficial "Go" da Google é o editor mais popular para Go. A extensão oferece: autocompletar via gopls (Go Language Server), formatação automática com gofmt, debugging com Delve, testes integrados e análise estática com go vet. Instale a extensão e use Ctrl+Shift+P > "Go: Install/Update Tools" para instalar as ferramentas auxiliares.',
+          explicacao: 'O VS Code com a extensão oficial "Go" da Google (publisher: golang) é o editor mais popular para Go. O coração da experiência é o gopls (Go Language Server) -- um servidor LSP que provê: autocompletar, go to definition, find references, renaming seguro, inlays hints de tipos inferidos e diagnósticos em tempo real.\n\nFerramentas essenciais instaladas via "Go: Install/Update Tools": gopls (language server), dlv (Delve debugger), staticcheck (linter avançado), gotests (geração de testes), gomodifytags (editar struct tags). Todas são instaladas como binários Go em $GOPATH/bin. Configuração recomendada no settings.json: "go.useLanguageServer": true, "editor.formatOnSave": true, "[go]": { "editor.defaultFormatter": "golang.go" }.\n\ngofmt é o formatador oficial e opinionado: não tem opções de configuração (tabs, não espaços; espaços após keywords; sem trailing whitespace). goimports faz o mesmo que gofmt e ainda gerencia imports automaticamente. go vet detecta erros comuns que compilam mas são incorretos (ex: string passada onde *string esperada, mutex copiado, etc). Integre go vet e staticcheck no CI para garantir qualidade.', 
           recursos: [
             'https://marketplace.visualstudio.com/items?itemName=golang.Go',
             'https://github.com/golang/vscode-go',
