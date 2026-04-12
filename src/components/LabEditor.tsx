@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { solveChallenge } from '../utils/pow';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -83,9 +84,14 @@ export function LabEditor({ initialFiles, projectSlug }: Readonly<LabEditorProps
     setRunning(true);
     setOutput(null);
     try {
+      const pow = await solveChallenge();
       const res = await fetch('/api/lab', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-PoW-Nonce': pow.nonce,
+          'X-PoW-Solution': pow.solution,
+        },
         body: JSON.stringify({
           files: files.map(f => ({ name: f.name, body: f.body })),
           mode,

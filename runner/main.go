@@ -3,6 +3,9 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"go/parser"
@@ -13,6 +16,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -32,6 +36,125 @@ var sem = make(chan struct{}, maxConcurrent)
 // Set SANDBOX_BASE to a non-temp path to avoid the Go 1.23+ restriction
 // on go.mod files inside the system temp root (os.TempDir()).
 var sandboxBaseDir = os.Getenv("SANDBOX_BASE")
+
+// ── Proof-of-Work challenge system ──────────────────────────────────────
+
+const (
+	powDifficulty = 20 // leading zero bits required (~1M hashes)
+	challengeTTL  = 60 * time.Second
+	maxChallenges = 10000
+)
+
+type challenge struct {
+	nonce     string
+	createdAt time.Time
+}
+
+var (
+	challengeStore = make(map[string]challenge)
+	challengeMu    sync.Mutex
+)
+
+func generateChallenge() string {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		log.Printf("rand.Read: %v", err)
+		return hex.EncodeToString([]byte(fmt.Sprintf("%d", time.Now().UnixNano())))
+	}
+	return hex.EncodeToString(b)
+}
+
+func handleChallenge(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	nonce := generateChallenge()
+
+	challengeMu.Lock()
+	// Evict expired challenges
+	now := time.Now()
+	if len(challengeStore) > maxChallenges/2 {
+		for k, v := range challengeStore {
+			if now.Sub(v.createdAt) > challengeTTL {
+				delete(challengeStore, k)
+			}
+		}
+	}
+	challengeStore[nonce] = challenge{nonce: nonce, createdAt: now}
+	challengeMu.Unlock()
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"nonce":      nonce,
+		"difficulty": powDifficulty,
+	})
+}
+
+func verifyPoW(nonce, solution string) bool {
+	hash := sha256.Sum256([]byte(nonce + solution))
+	bits := powDifficulty
+	for _, b := range hash {
+		if bits >= 8 {
+			if b != 0 {
+				return false
+			}
+			bits -= 8
+		} else if bits > 0 {
+			mask := byte(0xFF) << (8 - bits)
+			return (b & mask) == 0
+		} else {
+			break
+		}
+	}
+	return bits <= 0
+}
+
+func requirePoW(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-PoW-Nonce, X-PoW-Solution")
+
+		if r.Method == http.MethodOptions {
+			return
+		}
+
+		nonce := r.Header.Get("X-PoW-Nonce")
+		solution := r.Header.Get("X-PoW-Solution")
+
+		if nonce == "" || solution == "" {
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(runResponse{Errors: "prova de trabalho ausente"})
+			return
+		}
+
+		challengeMu.Lock()
+		ch, exists := challengeStore[nonce]
+		if exists {
+			delete(challengeStore, nonce) // single-use
+		}
+		challengeMu.Unlock()
+
+		if !exists || time.Since(ch.createdAt) > challengeTTL {
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(runResponse{Errors: "desafio expirado ou inválido"})
+			return
+		}
+
+		if !verifyPoW(nonce, solution) {
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(runResponse{Errors: "prova de trabalho inválida"})
+			return
+		}
+
+		next(w, r)
+	}
+}
+
+// ── Import validation ──────────────────────────────────────────────────
 
 var blockedImports = map[string]bool{
 	"os/exec":     true,
@@ -318,8 +441,9 @@ func main() {
 	go warmCache()
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/run", handleRun)
-	mux.HandleFunc("/lab", handleLab)
+	mux.HandleFunc("/run", requirePoW(handleRun))
+	mux.HandleFunc("/lab", requirePoW(handleLab))
+	mux.HandleFunc("/challenge", handleChallenge)
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "ok")
 	})

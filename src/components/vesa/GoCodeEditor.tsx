@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import { mdComponents } from './mdComponents';
+import { solveChallenge } from '../../utils/pow';
 
 export interface GoCodeEditorProps {
   referenceCode?: string;
@@ -23,9 +24,14 @@ export function GoCodeEditor({ referenceCode, referenceLabel, lessonId: _lessonI
     setRunning(true);
     setOutput(null);
     try {
+      const pow = await solveChallenge();
       const res = await fetch('/api/run', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-PoW-Nonce': pow.nonce,
+          'X-PoW-Solution': pow.solution,
+        },
         body: JSON.stringify({ body: code }),
       });
       const data = await res.json();

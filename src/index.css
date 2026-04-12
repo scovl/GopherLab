@@ -649,6 +649,12 @@ body {
   pointer-events: none;
 }
 
+@media (max-width: 768px) {
+  .roadmap-gopher {
+    display: none;
+  }
+}
+
 .roadmap-header h1 {
   font-size: 2rem;
   font-weight: 800;
