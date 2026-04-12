@@ -1,3 +1,5 @@
+![AprendaGo](assets/imgs/front-presentation.jpg)
+
 **AprendaGo** é uma plataforma web para aprender a linguagem Go do zero ao avançado, com execução de código diretamente no navegador e uma metodologia estruturada que vai além de tutoriais comuns. Ele combina conteúdo técnico progressivo com um ciclo de aprendizado ativo chamado **VESA** — sigla criada para esta plataforma que organiza cada lição em quatro fases:
 
 | Fase | O que acontece |
