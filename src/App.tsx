@@ -6,6 +6,7 @@ import { LessonView } from './components/LessonView';
 import { AccessibilityPanel } from './components/AccessibilityPanel';
 import { useRoadmap } from './hooks/useRoadmap';
 import { useProgress } from './context/ProgressContext';
+import { useNoteShelf, ShelfStickyManager, type ShelfNote } from './components/NoteShelf';
 
 type AppView = 'roadmap' | 'lesson' | 'accessibility';
 
@@ -14,6 +15,8 @@ export function App() {
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const { findLesson, modules } = useRoadmap();
   const { setCurrentLesson, progress } = useProgress();
+  const { shelf, pinToShelf, removeFromShelf, updateShelfNote } = useNoteShelf();
+  const [openShelfNotes, setOpenShelfNotes] = useState<ShelfNote[]>([]);
 
   const handleLessonSelect = useCallback(
     (lessonId: string) => {
@@ -39,6 +42,28 @@ export function App() {
       setCurrentLesson(null);
     }
   }, [setCurrentLesson]);
+
+  const handlePinNote = useCallback((id: string, lessonId: string, lessonTitle: string, text: string, note: string) => {
+    pinToShelf({ id, lessonId, lessonTitle, text, note });
+  }, [pinToShelf]);
+
+  const handleOpenShelfNote = useCallback((sn: ShelfNote) => {
+    setOpenShelfNotes(prev => prev.some(n => n.id === sn.id) ? prev : [...prev, sn]);
+  }, []);
+
+  const handleCloseShelfNote = useCallback((id: string) => {
+    setOpenShelfNotes(prev => prev.filter(n => n.id !== id));
+  }, []);
+
+  const handleSaveShelfNote = useCallback((id: string, noteText: string) => {
+    updateShelfNote(id, noteText);
+    setOpenShelfNotes(prev => prev.map(n => (n.id === id ? { ...n, note: noteText } : n)));
+  }, [updateShelfNote]);
+
+  const handleDeleteShelfNote = useCallback((id: string) => {
+    removeFromShelf(id);
+    setOpenShelfNotes(prev => prev.filter(n => n.id !== id));
+  }, [removeFromShelf]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -71,6 +96,9 @@ export function App() {
       <Sidebar
         onNavigate={handleSidebarNavigate}
         currentView={currentView === 'lesson' ? 'roadmap' : currentView}
+        shelf={shelf}
+        onOpenShelfNote={handleOpenShelfNote}
+        onRemoveShelfNote={removeFromShelf}
       />
 
       <div className="main-content" id="main-content" tabIndex={-1} data-roadmap-sidebar="true">
@@ -83,6 +111,7 @@ export function App() {
             module={lessonData.module}
             onBack={handleBackToRoadmap}
             onNavigate={handleLessonSelect}
+            onPinNote={handlePinNote}
           />
         )}
         {currentView === 'accessibility' && (
@@ -108,6 +137,13 @@ export function App() {
       <aside className="roadmap-sidebar" aria-label="Mapa visual do roadmap">
         <RoadmapTree onModuleClick={handleModuleClick} />
       </aside>
+
+      <ShelfStickyManager
+        openNotes={openShelfNotes}
+        onSave={handleSaveShelfNote}
+        onClose={handleCloseShelfNote}
+        onDelete={handleDeleteShelfNote}
+      />
     </div>
   );
 }

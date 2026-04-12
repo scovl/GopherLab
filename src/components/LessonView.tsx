@@ -2,15 +2,17 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Lesson, Module } from '../types';
 import { VesaPhases } from './VesaPhases';
 import { useRoadmap } from '../hooks/useRoadmap';
+import { SelectionToolbar } from './SelectionToolbar';
 
 interface LessonViewProps {
   lesson: Lesson;
   module: Module;
   onBack: () => void;
   onNavigate: (lessonId: string) => void;
+  onPinNote?: (id: string, lessonId: string, lessonTitle: string, text: string, note: string) => void;
 }
 
-export function LessonView({ lesson, module, onBack, onNavigate }: Readonly<LessonViewProps>) {
+export function LessonView({ lesson, module, onBack, onNavigate, onPinNote }: Readonly<LessonViewProps>) {
   const { getNextLesson, getPrevLesson } = useRoadmap();
   const next = getNextLesson(lesson.id);
   const prev = getPrevLesson(lesson.id);
@@ -62,20 +64,22 @@ export function LessonView({ lesson, module, onBack, onNavigate }: Readonly<Less
         <span aria-current="page">{lesson.title}</span>
       </nav>
 
-      <header className="lesson-header">
-        <div className="lesson-header-badge" style={{ backgroundColor: module.color }}>
-          {module.title}
-        </div>
-        <h1>{lesson.title}</h1>
-        <p className="lesson-description">{lesson.description}</p>
-        <div className="lesson-meta-bar">
-          <span className="meta-item" aria-label={`Tempo estimado: ${lesson.estimatedMinutes} minutos`}>
-            ⏱ ~{lesson.estimatedMinutes} min
-          </span>
-        </div>
-      </header>
+      <SelectionToolbar lessonId={lesson.id} lessonTitle={lesson.title} onPinNote={onPinNote}>
+        <header className="lesson-header">
+          <div className="lesson-header-badge" style={{ backgroundColor: module.color }}>
+            {module.title}
+          </div>
+          <h1>{lesson.title}</h1>
+          <p className="lesson-description">{lesson.description}</p>
+          <div className="lesson-meta-bar">
+            <span className="meta-item" aria-label={`Tempo estimado: ${lesson.estimatedMinutes} minutos`}>
+              ⏱ ~{lesson.estimatedMinutes} min
+            </span>
+          </div>
+        </header>
 
-      <VesaPhases key={lesson.id} vesa={lesson.vesa} lessonId={lesson.id} />
+        <VesaPhases key={lesson.id} vesa={lesson.vesa} lessonId={lesson.id} />
+      </SelectionToolbar>
 
       <nav className="lesson-pagination" aria-label="Navegação entre aulas">
         {prev ? (

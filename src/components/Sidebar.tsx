@@ -3,13 +3,17 @@ import { useAccessibility } from '../context/AccessibilityContext';
 import { useProgress } from '../context/ProgressContext';
 import { useRoadmap } from '../hooks/useRoadmap';
 import { PomodoroTimer } from './PomodoroTimer';
+import { NoteShelf, type ShelfNote } from './NoteShelf';
 
 interface SidebarProps {
   onNavigate: (view: 'roadmap' | 'accessibility') => void;
   currentView: string;
+  shelf?: ShelfNote[];
+  onOpenShelfNote?: (note: ShelfNote) => void;
+  onRemoveShelfNote?: (id: string) => void;
 }
 
-export function Sidebar({ onNavigate, currentView }: Readonly<SidebarProps>) {
+export function Sidebar({ onNavigate, currentView, shelf, onOpenShelfNote, onRemoveShelfNote }: Readonly<SidebarProps>) {
   const { settings, updateSetting } = useAccessibility();
   const { progress } = useProgress();
   const { totalLessons } = useRoadmap();
@@ -80,11 +84,9 @@ export function Sidebar({ onNavigate, currentView }: Readonly<SidebarProps>) {
 
       <PomodoroTimer />
 
-      <div className="sidebar-footer">
-        <p className="sidebar-hint">
-          Use Tab para navegar. Esc para voltar.
-        </p>
-      </div>
+      {shelf && onOpenShelfNote && onRemoveShelfNote && (
+        <NoteShelf shelf={shelf} onOpen={onOpenShelfNote} onRemove={onRemoveShelfNote} />
+      )}
     </aside>
   );
 }
