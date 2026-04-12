@@ -81,12 +81,29 @@ export function PomodoroTimer() {
   };
 
   const progress = 1 - timeLeft / DURATIONS[mode];
-  const circumference = 2 * Math.PI * 36;
+  const R = 70;
+  const circumference = 2 * Math.PI * R;
   const dashOffset = circumference * (1 - progress);
+
+  // Generate 60 tick marks around the ring
+  const ticks = Array.from({ length: 60 }, (_, i) => {
+    const angle = (i * 360) / 60;
+    const isMajor = i % 5 === 0;
+    const outerR = 88;
+    const innerR = isMajor ? 80 : 83;
+    const rad = (angle - 90) * (Math.PI / 180);
+    return {
+      x1: 100 + outerR * Math.cos(rad),
+      y1: 100 + outerR * Math.sin(rad),
+      x2: 100 + innerR * Math.cos(rad),
+      y2: 100 + innerR * Math.sin(rad),
+      major: isMajor,
+    };
+  });
 
   return (
     <div className="pomodoro" aria-label="Pomodoro Timer">
-      <div className="pomodoro-label">🍅 Pomodoro Timer</div>
+      <div className="pomodoro-label">Marmota Timer</div>
       <div className="pomodoro-modes">
         {(Object.keys(DURATIONS) as TimerMode[]).map(m => (
           <button
@@ -101,16 +118,32 @@ export function PomodoroTimer() {
       </div>
 
       <div className="pomodoro-ring-wrapper">
-        <svg className="pomodoro-ring" viewBox="0 0 80 80" aria-hidden="true">
-          <circle cx="40" cy="40" r="36" className="pomodoro-ring-bg" />
+        <svg className="pomodoro-ring" viewBox="0 0 200 200" aria-hidden="true">
+          {/* Tick marks */}
+          {ticks.map((t, i) => (
+            <line
+              key={i}
+              x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2}
+              className={t.major ? 'pomodoro-tick pomodoro-tick--major' : 'pomodoro-tick'}
+            />
+          ))}
+          {/* Background ring */}
+          <circle cx="100" cy="100" r={R} className="pomodoro-ring-bg" />
+          {/* Progress arc */}
           <circle
-            cx="40" cy="40" r="36"
+            cx="100" cy="100" r={R}
             className={`pomodoro-ring-progress pomodoro-ring--${mode}`}
             strokeDasharray={circumference}
             strokeDashoffset={dashOffset}
-            transform="rotate(-90 40 40)"
+            transform="rotate(-90 100 100)"
           />
         </svg>
+        <img
+          className="pomodoro-gopher"
+          src="/gopher.png"
+          alt=""
+          aria-hidden="true"
+        />
         <div className="pomodoro-time" aria-live="polite">
           {formatTime(timeLeft)}
         </div>
