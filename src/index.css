@@ -314,20 +314,6 @@ body {
   font-weight: 600;
 }
 
-.sidebar-irc-btn {
-  text-decoration: none;
-  border: 1px dashed var(--border-color);
-  color: var(--text-secondary);
-  margin-top: 0.25rem;
-}
-
-.sidebar-irc-btn:hover {
-  background: var(--bg-tertiary);
-  color: var(--accent-primary, #00adb5);
-  border-color: var(--accent-primary, #00adb5);
-  border-style: solid;
-}
-
 .sidebar-footer {
   margin-top: auto;
   padding: 1rem;
@@ -2479,26 +2465,6 @@ body {
   }
 }
 
-/* ===================== IRC Embedded View ===================== */
-
-/* When IRC view is active, strip padding so the iframe fills edge-to-edge */
-.main-content--irc {
-  padding: 0;
-  align-items: stretch;
-}
-
-.main-content--irc > * {
-  max-width: none;
-}
-
-.irc-view-frame {
-  flex: 1;
-  width: 100%;
-  height: 100vh;
-  border: none;
-  display: block;
-}
-
 /* --- Footer --- */
 .app-footer {
   margin-top: auto;
@@ -2538,80 +2504,128 @@ body {
   color: var(--accent, #0ea5e9);
 }
 
-/* ===================== IRC Modal (legacy, unused) ===================== */
+/* ===================== Pomodoro Timer ===================== */
 
-.irc-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(3px);
-  padding: 1rem;
-}
-
-.irc-modal {
+.pomodoro {
   display: flex;
   flex-direction: column;
-  width: min(900px, 95vw);
-  height: min(680px, 90vh);
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
-}
-
-.irc-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.65rem 1rem;
-  background: var(--bg-primary);
-  border-bottom: 1px solid var(--border-color);
-  flex-shrink: 0;
-}
-
-.irc-modal-title {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  display: flex;
   align-items: center;
   gap: 0.5rem;
+  padding: 0.75rem 0.5rem;
+  border-top: 1px solid var(--border-color);
 }
 
-.irc-modal-title code {
-  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
-  font-size: 0.85em;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 3px;
-  padding: 0.05em 0.35em;
+.pomodoro-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.03em;
 }
 
-.irc-modal-close {
+.pomodoro-modes {
+  display: flex;
+  gap: 0.25rem;
+  width: 100%;
+}
+
+.pomodoro-mode-btn {
+  flex: 1;
   background: none;
-  border: none;
-  font-size: 1.1rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.2rem 0.15rem;
+  font-size: 0.65rem;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 0.25rem 0.5rem;
-  border-radius: var(--radius-sm);
-  line-height: 1;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
 }
 
-.irc-modal-close:hover {
+.pomodoro-mode-btn:hover {
   background: var(--bg-tertiary);
   color: var(--text-primary);
 }
 
-.irc-modal-frame {
-  flex: 1;
+.pomodoro-mode-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.pomodoro-ring-wrapper {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pomodoro-ring {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  border: none;
-  background: #1a1a2e;
+  height: 100%;
+}
+
+.pomodoro-ring-bg {
+  fill: none;
+  stroke: var(--border-color);
+  stroke-width: 4;
+}
+
+.pomodoro-ring-progress {
+  fill: none;
+  stroke-width: 4;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.5s ease;
+}
+
+.pomodoro-ring--focus { stroke: var(--accent); }
+.pomodoro-ring--short-break { stroke: #4caf50; }
+.pomodoro-ring--long-break { stroke: #ff9800; }
+
+.pomodoro-time {
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  z-index: 1;
+}
+
+.pomodoro-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.pomodoro-btn {
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.pomodoro-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.pomodoro-btn--toggle.running {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.pomodoro-sessions {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  min-height: 1em;
 }

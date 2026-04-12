@@ -4,11 +4,10 @@ import { RoadmapView } from './components/RoadmapView';
 import { RoadmapTree } from './components/RoadmapTree';
 import { LessonView } from './components/LessonView';
 import { AccessibilityPanel } from './components/AccessibilityPanel';
-import { IrcView } from './components/IrcView';
 import { useRoadmap } from './hooks/useRoadmap';
 import { useProgress } from './context/ProgressContext';
 
-type AppView = 'roadmap' | 'lesson' | 'accessibility' | 'irc';
+type AppView = 'roadmap' | 'lesson' | 'accessibility';
 
 export function App() {
   const [currentView, setCurrentView] = useState<AppView>('roadmap');
@@ -33,7 +32,7 @@ export function App() {
     setCurrentLesson(null);
   }, [setCurrentLesson]);
 
-  const handleSidebarNavigate = useCallback((view: 'roadmap' | 'accessibility' | 'irc') => {
+  const handleSidebarNavigate = useCallback((view: 'roadmap' | 'accessibility') => {
     setCurrentView(view);
     if (view === 'roadmap') {
       setSelectedLessonId(null);
@@ -74,7 +73,7 @@ export function App() {
         currentView={currentView === 'lesson' ? 'roadmap' : currentView}
       />
 
-      <div className={`main-content${currentView === 'irc' ? ' main-content--irc' : ''}`} id="main-content" tabIndex={-1} data-roadmap-sidebar="true">
+      <div className="main-content" id="main-content" tabIndex={-1} data-roadmap-sidebar="true">
         {currentView === 'roadmap' && (
           <RoadmapView onLessonSelect={handleLessonSelect} />
         )}
@@ -91,10 +90,8 @@ export function App() {
             <AccessibilityPanel />
           </div>
         )}
-        {currentView === 'irc' && <IrcView />}
 
-        {currentView !== 'irc' && (
-          <footer className="app-footer">
+        <footer className="app-footer">
             <span className="app-footer__divider" aria-hidden="true" />
             <p>
               Feito com ♥ por{' '}
@@ -106,7 +103,6 @@ export function App() {
               Projeto open source — contribuições são bem-vindas
             </p>
           </footer>
-        )}
       </div>
 
       <aside className="roadmap-sidebar" aria-label="Mapa visual do roadmap">

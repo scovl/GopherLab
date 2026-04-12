@@ -2,9 +2,10 @@ import React from 'react';
 import { useAccessibility } from '../context/AccessibilityContext';
 import { useProgress } from '../context/ProgressContext';
 import { useRoadmap } from '../hooks/useRoadmap';
+import { PomodoroTimer } from './PomodoroTimer';
 
 interface SidebarProps {
-  onNavigate: (view: 'roadmap' | 'accessibility' | 'irc') => void;
+  onNavigate: (view: 'roadmap' | 'accessibility') => void;
   currentView: string;
 }
 
@@ -75,18 +76,9 @@ export function Sidebar({ onNavigate, currentView }: Readonly<SidebarProps>) {
           <span aria-hidden="true">♿</span>
           <span>Acessibilidade</span>
         </button>
-
-        <button
-          className={`sidebar-nav-item sidebar-irc-btn ${currentView === 'irc' ? 'active' : ''}`}
-          onClick={() => onNavigate('irc')}
-          aria-current={currentView === 'irc' ? 'page' : undefined}
-          aria-label="Abrir chat IRC do canal #gopherlab na Libera.Chat"
-          title="Chat IRC — #gopherlab @ Libera.Chat"
-        >
-          <span aria-hidden="true">💬</span>
-          <span>Chat IRC</span>
-        </button>
       </nav>
+
+      <PomodoroTimer />
 
       <div className="sidebar-footer">
         <p className="sidebar-hint">
