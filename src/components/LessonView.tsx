@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Lesson, Module } from '../types';
 import { VesaPhases } from './VesaPhases';
 import { useRoadmap } from '../hooks/useRoadmap';
@@ -14,6 +14,18 @@ export function LessonView({ lesson, module, onBack, onNavigate }: Readonly<Less
   const { getNextLesson, getPrevLesson } = useRoadmap();
   const next = getNextLesson(lesson.id);
   const prev = getPrevLesson(lesson.id);
+  const [showLessons, setShowLessons] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowLessons(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   return (
     <article className="lesson-view" aria-label={`Aula: ${lesson.title}`}>
@@ -22,7 +34,30 @@ export function LessonView({ lesson, module, onBack, onNavigate }: Readonly<Less
           ← Roadmap
         </button>
         <span aria-hidden="true">/</span>
-        <span>{module.title}</span>
+        <div className="breadcrumb-dropdown" ref={dropdownRef}>
+          <button
+            className="btn btn-ghost breadcrumb-module-btn"
+            onClick={() => setShowLessons(v => !v)}
+            aria-expanded={showLessons}
+            aria-haspopup="listbox"
+          >
+            {module.title} <span className="breadcrumb-chevron" aria-hidden="true">▾</span>
+          </button>
+          {showLessons && (
+            <ul className="breadcrumb-lesson-list" role="listbox" aria-label={`Aulas de ${module.title}`}>
+              {module.lessons.map(l => (
+                <li key={l.id} role="option" aria-selected={l.id === lesson.id}>
+                  <button
+                    className={`breadcrumb-lesson-item${l.id === lesson.id ? ' active' : ''}`}
+                    onClick={() => { onNavigate(l.id); setShowLessons(false); }}
+                  >
+                    {l.title}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
         <span aria-hidden="true">/</span>
         <span aria-current="page">{lesson.title}</span>
       </nav>
@@ -40,7 +75,7 @@ export function LessonView({ lesson, module, onBack, onNavigate }: Readonly<Less
         </div>
       </header>
 
-      <VesaPhases vesa={lesson.vesa} lessonId={lesson.id} />
+      <VesaPhases key={lesson.id} vesa={lesson.vesa} lessonId={lesson.id} />
 
       <nav className="lesson-pagination" aria-label="Navegação entre aulas">
         {prev ? (

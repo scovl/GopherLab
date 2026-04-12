@@ -32,6 +32,7 @@ export function RoadmapView({ onLessonSelect }: Readonly<RoadmapViewProps>) {
     <main className="roadmap-view" role="main" aria-label="Roadmap de aprendizado Go">
       <div>
           <header className="roadmap-header">
+            <img className="roadmap-gopher" src="/gopher.png" alt="Gopher mascote do Go" />
             <h1>Aprenda Go</h1>
             <p className="roadmap-subtitle">
               Roadmap completo de aprendizado em Golang com metodologia VESA

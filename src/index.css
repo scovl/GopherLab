@@ -232,7 +232,9 @@ body {
 }
 
 .brand-icon {
-  font-size: 1.4rem;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
 }
 
 .sidebar-toggle {
@@ -633,7 +635,18 @@ body {
 
 /* --- Roadmap View --- */
 .roadmap-header {
+  position: relative;
   margin-bottom: 2rem;
+}
+
+.roadmap-gopher {
+  position: absolute;
+  right: 0;
+  top: -10px;
+  width: 300px;
+  height: auto;
+  opacity: 0.9;
+  pointer-events: none;
 }
 
 .roadmap-header h1 {
@@ -948,6 +961,69 @@ body {
 .lesson-breadcrumb span[aria-current] {
   color: var(--text-primary);
   font-weight: 500;
+}
+
+/* Breadcrumb dropdown */
+.breadcrumb-dropdown {
+  position: relative;
+}
+
+.breadcrumb-module-btn {
+  font-size: 0.85rem;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.breadcrumb-module-btn:hover {
+  background: var(--bg-card);
+}
+
+.breadcrumb-chevron {
+  font-size: 0.7rem;
+  margin-left: 0.15rem;
+}
+
+.breadcrumb-lesson-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 100;
+  min-width: 260px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  padding: 0.35rem 0;
+  margin-top: 0.25rem;
+  list-style: none;
+}
+
+.breadcrumb-lesson-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.85rem;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.breadcrumb-lesson-item:hover {
+  background: var(--bg-hover, rgba(255,255,255,0.06));
+}
+
+.breadcrumb-lesson-item.active {
+  color: var(--accent);
+  font-weight: 600;
+  background: var(--bg-hover, rgba(255,255,255,0.04));
 }
 
 .lesson-header {

@@ -35,7 +35,7 @@ export function Sidebar({ onNavigate, currentView }: Readonly<SidebarProps>) {
     <aside className="sidebar" aria-label="Menu lateral de navegação">
       <div className="sidebar-header">
         <div className="sidebar-brand">
-          <span className="brand-icon" aria-hidden="true">🐹</span>
+          <img className="brand-icon" src="/gopher.png" alt="Gopher mascote" width="32" height="32" />
           <h2>Aprenda Go</h2>
         </div>
         <button

@@ -1,11 +1,6 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
-
-const mdComponents = {
-  a: ({ href, children }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
-    <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>
-  ),
-};
+import { mdComponents } from './mdComponents';
 
 export interface GoCodeEditorProps {
   referenceCode?: string;
@@ -77,7 +72,7 @@ export function GoCodeEditor({ referenceCode, referenceLabel, lessonId: _lessonI
 
       <div className="playground-header">
         <span className="playground-title">
-          <span aria-hidden="true">🐹</span> Seu código
+          <img src="/gopher.png" alt="" aria-hidden="true" width="20" height="20" style={{ verticalAlign: 'middle', marginRight: '0.3rem' }} /> Seu código
         </span>
         <div className="playground-toolbar">
           <button

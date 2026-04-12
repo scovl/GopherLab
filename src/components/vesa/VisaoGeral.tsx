@@ -2,6 +2,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { VesaContent } from '../../types';
 import { getLessonContent } from '../../data/content';
+import { mdComponents } from './mdComponents';
 
 function getYouTubeId(url: string): string | null {
   const m = RegExp(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{11})/).exec(url);
@@ -18,7 +19,7 @@ export function VisaoGeralContent({ content, lessonId }: Readonly<{ content: Ves
       <div className="explanation-block">
         {markdownContent ? (
           <div className="markdown-content">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdownContent}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>{markdownContent}</ReactMarkdown>
           </div>
         ) : content.explicacao ? (
           content.explicacao.split('\n').filter(Boolean).map((p, i) => <p key={i}>{p}</p>)
