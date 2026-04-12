@@ -36,7 +36,7 @@ export function Sidebar({ onNavigate, currentView }: Readonly<SidebarProps>) {
       <div className="sidebar-header">
         <div className="sidebar-brand">
           <img className="brand-icon" src="/gopher.png" alt="Gopher mascote" width="32" height="32" />
-          <h2>Aprenda Go</h2>
+          <h2>GopherLab</h2>
         </div>
         <button
           className="sidebar-toggle"
@@ -80,8 +80,8 @@ export function Sidebar({ onNavigate, currentView }: Readonly<SidebarProps>) {
           className={`sidebar-nav-item sidebar-irc-btn ${currentView === 'irc' ? 'active' : ''}`}
           onClick={() => onNavigate('irc')}
           aria-current={currentView === 'irc' ? 'page' : undefined}
-          aria-label="Abrir chat IRC do canal #aprendago na Libera.Chat"
-          title="Chat IRC — #aprendago @ Libera.Chat"
+          aria-label="Abrir chat IRC do canal #gopherlab na Libera.Chat"
+          title="Chat IRC — #gopherlab @ Libera.Chat"
         >
           <span aria-hidden="true">💬</span>
           <span>Chat IRC</span>

@@ -63,7 +63,7 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 		"TERM=xterm-256color",
 		"HOME=/home/learner",
 		"SHELL=/bin/bash",
-		"APRENDAGO_LESSON="+lesson,
+		"GOPHERLAB_LESSON="+lesson,
 	)
 
 	ptmx, err := pty.Start(cmd)

@@ -1,4 +1,4 @@
-module github.com/scovl/AprendaGo/terminal
+module github.com/scovl/GopherLab/terminal
 
 go 1.23
 

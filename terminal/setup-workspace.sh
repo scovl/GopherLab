@@ -251,7 +251,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "aprendago-cli",
+	Use:   "gopherlab-cli",
 	Short: "CLI de exemplo — módulo impl-cli",
 	Long:  `Uma CLI com subcomandos, flags e args para praticar cobra.`,
 }
@@ -278,7 +278,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Exibe a versão",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("aprendago-cli v1.0.0")
+		fmt.Println("gopherlab-cli v1.0.0")
 	},
 }
 
@@ -294,7 +294,7 @@ func main() {
 }
 EOF
 $GO mod tidy
-$GO build -o aprendago-cli .
+$GO build -o gopherlab-cli .
 
 # ─── impl-grpc ────────────────────────────────────────────────────────────────
 mkdir -p $WORKSPACE/impl-grpc && cd $WORKSPACE/impl-grpc
@@ -466,7 +466,7 @@ $GO build ./...
 # ─── opensource (shared git setup) ────────────────────────────────────────────
 mkdir -p $WORKSPACE/opensource && cd $WORKSPACE/opensource
 git init -q
-git config user.email "learner@aprendago.local"
+git config user.email "learner@gopherlab.local"
 git config user.name "Aprendiz Go"
 $GO mod init opensource-demo
 cat > main.go << 'EOF'

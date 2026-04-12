@@ -4,7 +4,7 @@ services:
       context: ./runner
       dockerfile: Dockerfile
     restart: unless-stopped
-    container_name: aprenda-go-runner
+    container_name: gopherlab-runner
     mem_limit: 512m
     cpus: '1.0'
     security_opt:
@@ -20,7 +20,7 @@ services:
       context: ./terminal
       dockerfile: Dockerfile
     restart: unless-stopped
-    container_name: aprenda-go-terminal
+    container_name: gopherlab-terminal
     mem_limit: 512m
     cpus: '1.0'
     security_opt:
@@ -35,20 +35,20 @@ services:
       context: ./runner
       dockerfile: Dockerfile
       target: test-runner
-    container_name: aprenda-go-runner-test
+    container_name: gopherlab-runner-test
     mem_limit: 512m
     cpus: '1.0'
     profiles:
       - test
 
-  aprenda-go:
+  gopherlab:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
       - "3000:80"
     restart: unless-stopped
-    container_name: aprenda-go
+    container_name: gopherlab
     depends_on:
       - runner
       - terminal
@@ -57,7 +57,7 @@ services:
       - backend
 
   # Dev mode: hot reload — docker compose --profile dev up
-  aprenda-go-dev:
+  gopherlab-dev:
     image: node:20-alpine
     working_dir: /app
     volumes:

@@ -1,4 +1,4 @@
-# Guia de Contribuição — AprendaGo
+# Guia de Contribuição — GopherLab
 
 ---
 

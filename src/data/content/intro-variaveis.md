@@ -80,7 +80,7 @@ aplicacao:
     }
 ---
 
-Aqui começa a parte prática do curso. E a boa notícia: **você não precisa instalar nada**. O AprendaGo tem um playground embutido — basta clicar na aba **Experimentação** e seu código é compilado e executado na hora, direto no browser.
+Aqui começa a parte prática do curso. E a boa notícia: **você não precisa instalar nada**. O GopherLab tem um playground embutido — basta clicar na aba **Experimentação** e seu código é compilado e executado na hora, direto no browser.
 
 > **Nota:** A aba **Aplicação** é um ambiente mais completo, com suporte a múltiplos arquivos e testes. Ele roda um container Linux com Go instalado — como uma máquina virtual na nuvem para você programar.
 

@@ -4,7 +4,7 @@ interface IrcModalProps {
   onClose: () => void;
 }
 
-const IRC_URL = 'https://kiwiirc.com/nextclient/irc.libera.chat/#aprendago';
+const IRC_URL = 'https://kiwiirc.com/nextclient/irc.libera.chat/#gopherlab';
 
 export function IrcModal({ onClose }: Readonly<IrcModalProps>) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -24,14 +24,14 @@ export function IrcModal({ onClose }: Readonly<IrcModalProps>) {
       className="irc-modal-overlay"
       role="dialog"
       aria-modal="true"
-      aria-label="Chat IRC — #aprendago na Libera.Chat"
+      aria-label="Chat IRC — #gopherlab na Libera.Chat"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="irc-modal">
         <div className="irc-modal-header">
           <span className="irc-modal-title">
             <span aria-hidden="true">💬</span>
-            Chat IRC — <code>#aprendago</code> @ Libera.Chat
+            Chat IRC — <code>#gopherlab</code> @ Libera.Chat
           </span>
           <button
             ref={closeButtonRef}
@@ -46,7 +46,7 @@ export function IrcModal({ onClose }: Readonly<IrcModalProps>) {
         <iframe
           className="irc-modal-frame"
           src={IRC_URL}
-          title="Chat IRC — #aprendago na Libera.Chat"
+          title="Chat IRC — #gopherlab na Libera.Chat"
           allow="fullscreen"
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
         />
