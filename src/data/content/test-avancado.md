@@ -303,14 +303,24 @@ func TestSaudacao(t *testing.T) {
 
 ### O que aconteceu?
 
-```
-Código real (produção):           Código de teste:
-┌──────────────┐                 ┌──────────────┐
-│ Saudacao()   │                 │ Saudacao()   │
-│   ↓          │                 │   ↓          │
-│ PostgreSQL   │  ← banco real   │ mockRepo{}   │  ← map na memória
-│ (lento, rede)│                 │ (instantâneo)│
-└──────────────┘                 └──────────────┘
+```mermaid
+flowchart LR
+  subgraph prod["🏭 Código real (produção)"]
+    s1(["Saudacao()"])
+    pg(["🐘 PostgreSQL\nlento · rede"])
+    s1 --> pg
+  end
+
+  subgraph test["🧪 Código de teste"]
+    s2(["Saudacao()"])
+    mock(["mockRepo{}\nmap na memória\ninstantâneo ⚡"])
+    s2 --> mock
+  end
+
+  style s1   fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style pg   fill:#fff1f2,stroke:#fca5a5,color:#7f1d1d
+  style s2   fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style mock fill:#dcfce7,stroke:#16a34a,color:#14532d
 ```
 
 > **Regra de ouro do mocking em Go:** defina dependências como **interfaces**, não como structs concretas. Assim, o teste substitui a implementação real por um mock **sem mudar nenhuma linha do código de produção**.
@@ -498,22 +508,25 @@ Imagine um macaco clicando botões aleatórios do seu programa durante horas. Se
 
 ### Como funciona
 
-```
-Você dá exemplos iniciais (seeds)
-         │
-         ▼
-┌─────────────────────────┐
-│ Go gera milhares de     │
-│ variações automaticamente│
-│                         │
-│ "Alice" → "AAA...AAA"  │
-│ "Alice" → ""            │
-│ "Alice" → "日本語🎉"    │
-│ "Alice" → "\x00\xff"   │
-└────────────┬────────────┘
-             ▼
-     Encontrou panic? ──▶ Salva o input em testdata/
-                          para reproduzir sempre
+```mermaid
+flowchart TD
+  seeds(["🌱 Seeds\nf.Add(Alice), f.Add('') ..."])
+  fuzzer(["🤖 Go Fuzzer\ngera milhares de variações\nAAA...AAA · '' · 日本語🎉 · \\x00\\xff"])
+  check{"🔍 Encontrou\npanic / falha?"}
+  save(["💾 Salva em testdata/\npara reproduzir sempre"])
+  ok(["✅ Continua gerando\npor fuzztime"])
+
+  seeds --> fuzzer
+  fuzzer --> check
+  check -->|"sim"| save
+  check -->|"não"| ok
+  ok --> fuzzer
+
+  style seeds  fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style fuzzer fill:#fef9c3,stroke:#ca8a04,color:#713f12
+  style check  fill:#fce7f3,stroke:#db2777,color:#831843
+  style save   fill:#fff1f2,stroke:#fca5a5,color:#7f1d1d
+  style ok     fill:#dcfce7,stroke:#16a34a,color:#14532d
 ```
 
 ### Passo a passo
@@ -631,22 +644,32 @@ go tool pprof -http=:8081 cpu.out
 
 ## Resumo Visual: As 3 Técnicas
 
-```
-┌─────────────────────────────────────────────────┐
-│                  TESTES AVANÇADOS                │
-├─────────────┬──────────────┬────────────────────┤
-│   MOCKING   │  BENCHMARKS  │     FUZZING        │
-│             │              │                    │
-│ "Dublê de   │ "Cronômetro  │ "Macaco apertando  │
-│  cinema"    │  de F1"      │  botões"           │
-│             │              │                    │
-│ Substitui   │ Mede tempo   │ Gera inputs        │
-│ banco/API   │ e memória    │ aleatórios         │
-│ por mock    │ com precisão │ automaticamente    │
-│             │              │                    │
-│ *testing.T  │ *testing.B   │ *testing.F         │
-│ interface{} │ b.N loop     │ f.Add + f.Fuzz     │
-└─────────────┴──────────────┴────────────────────┘
+```mermaid
+flowchart LR
+  subgraph mock["🎭 MOCKING\n\"Dublê de cinema\""]
+    m1(["Substitui banco/API\npor mock"])
+    m2(["*testing.T\ninterface{}"])
+    m1 --> m2
+  end
+
+  subgraph bench["⏱️ BENCHMARKS\n\"Cronômetro de F1\""]
+    b1(["Mede tempo e memória\ncom precisão"])
+    b2(["*testing.B\nb.N loop"])
+    b1 --> b2
+  end
+
+  subgraph fuzz["🐒 FUZZING\n\"Macaco apertando botões\""]
+    f1(["Gera inputs aleatórios\nautomaticamente"])
+    f2(["*testing.F\nf.Add + f.Fuzz"])
+    f1 --> f2
+  end
+
+  style m1 fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style m2 fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style b1 fill:#fef9c3,stroke:#ca8a04,color:#713f12
+  style b2 fill:#fef9c3,stroke:#ca8a04,color:#713f12
+  style f1 fill:#dcfce7,stroke:#16a34a,color:#14532d
+  style f2 fill:#dcfce7,stroke:#16a34a,color:#14532d
 ```
 
 ---

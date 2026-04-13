@@ -323,17 +323,36 @@ func processarPedido(id int) error {
 
 Cada `%w` cria uma **camada**:
 
-```
-processarPedido → "processar pedido 42: não encontrado"
-    └── ErrNotFound → "não encontrado"
+```mermaid
+flowchart BT
+  e0(["❌ ErrNotFound
+nao encontrado"])
+  e1(["📦 processarPedido
+processar pedido 42: nao encontrado"])
+
+  e0 -->|"embrulhado em"| e1
+
+  style e0 fill:#fff1f2,stroke:#fca5a5,color:#7f1d1d
+  style e1 fill:#fef9c3,stroke:#ca8a04,color:#713f12
 ```
 
 Se tiver mais camadas:
 
-```
-handler → "handler: processar pedido 42: não encontrado"
-    └── processarPedido → "processar pedido 42: não encontrado"
-        └── ErrNotFound → "não encontrado"
+```mermaid
+flowchart BT
+  e0(["❌ ErrNotFound
+nao encontrado"])
+  e1(["📦 processarPedido
+processar pedido 42: nao encontrado"])
+  e2(["📦 handler
+handler: processar pedido 42: nao encontrado"])
+
+  e0 -->|"embrulhado em"| e1
+  e1 -->|"embrulhado em"| e2
+
+  style e0 fill:#fff1f2,stroke:#fca5a5,color:#7f1d1d
+  style e1 fill:#fef9c3,stroke:#ca8a04,color:#713f12
+  style e2 fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
 ```
 
 É como uma **boneca russa** (matrioshka) — cada camada embrulha a anterior.

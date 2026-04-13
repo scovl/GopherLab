@@ -368,33 +368,25 @@ Saída:
 
 ## Resumo Visual: O Pipeline de Qualidade
 
-```
-Seu Código
-    │
-    ▼
-┌─────────────┐
-│  go fmt      │  ← Formata automaticamente
-└─────┬───────┘
-      ▼
-┌─────────────┐
-│  go vet      │  ← Encontra bugs óbvios
-└─────┬───────┘
-      ▼
-┌─────────────┐
-│  golangci-   │  ← 100+ verificações
-│  lint        │
-└─────┬───────┘
-      ▼
-┌─────────────┐
-│  go test     │  ← Testes + race detector
-│  -race       │
-└─────┬───────┘
-      ▼
-┌─────────────┐
-│  govulncheck │  ← Vulnerabilidades
-└─────┬───────┘
-      ▼
-  ✅ Código Limpo
+```mermaid
+flowchart TD
+  src(["📝 Seu Código"])
+  fmt(["🎨 go fmt\nFormata automaticamente"])
+  vet(["🔎 go vet\nEncontra bugs óbvios"])
+  lint(["🧑‍⚖️ golangci-lint\n100+ verificações"])
+  test(["🧪 go test -race\nTestes + race detector"])
+  vuln(["🔒 govulncheck\nVulnerabilidades"])
+  ok(["✅ Código Limpo"])
+
+  src --> fmt --> vet --> lint --> test --> vuln --> ok
+
+  style src  fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style fmt  fill:#fef9c3,stroke:#ca8a04,color:#713f12
+  style vet  fill:#fef9c3,stroke:#ca8a04,color:#713f12
+  style lint fill:#fce7f3,stroke:#db2777,color:#831843
+  style test fill:#fce7f3,stroke:#db2777,color:#831843
+  style vuln fill:#fff1f2,stroke:#fca5a5,color:#7f1d1d
+  style ok   fill:#dcfce7,stroke:#16a34a,color:#14532d
 ```
 
 ---

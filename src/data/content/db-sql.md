@@ -205,14 +205,19 @@ aplicacao:
 
 > **Analogia:** `database/sql` é como uma **tomada universal**. O driver (pgx, pq, mysql) é o **adaptador** para cada tipo de banco. A tomada é sempre a mesma — só troca o adaptador.
 
-```
-Seu código Go
-    ↓
-database/sql  ← interface padrão (sempre igual)
-    ↓
-Driver (pgx, pq, mysql)  ← adaptador específico
-    ↓
-PostgreSQL / MySQL / SQLite
+```mermaid
+flowchart TD
+  code(["🐹 Seu código Go"])
+  std(["📦 database/sql\ninterface padrão"])
+  drv(["🔌 Driver\npgx · pq · mysql"])
+  db(["🗄️ PostgreSQL · MySQL · SQLite"])
+
+  code --> std --> drv --> db
+
+  style code fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style std  fill:#fef9c3,stroke:#ca8a04,color:#713f12
+  style drv  fill:#fce7f3,stroke:#db2777,color:#831843
+  style db   fill:#dcfce7,stroke:#16a34a,color:#14532d
 ```
 
 ---

@@ -223,9 +223,18 @@ Goroutines rodam de forma independente. Como uma passa dados para a outra? Com *
 
 Um channel é um **tubo** que conecta goroutines. Uma goroutine coloca dados de um lado, outra goroutine pega do outro lado.
 
-```
-Goroutine A  ──── [canal] ────  Goroutine B
-               enviar →   → receber
+```mermaid
+flowchart LR
+  ga(["🔵 Goroutine A"])
+  ch(["📦 canal"])
+  gb(["🟢 Goroutine B"])
+
+  ga -->|"enviar →"| ch
+  ch -->|"→ receber"| gb
+
+  style ga fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style ch fill:#fef9c3,stroke:#ca8a04,color:#713f12
+  style gb fill:#dcfce7,stroke:#16a34a,color:#14532d
 ```
 
 ### Criando e usando channels
@@ -392,10 +401,21 @@ Isso é um **try-receive**: tenta receber, mas se não tem nada, não espera.
 
 Este é o padrão mais comum com goroutines e channels:
 
-```
-[Produtor 1] ──┐
-               ├──→ [canal] ──→ [Consumidor]
-[Produtor 2] ──┘
+```mermaid
+flowchart LR
+  p1(["🔵 Produtor 1"])
+  p2(["🔵 Produtor 2"])
+  ch(["📦 canal"])
+  c(["🟢 Consumidor"])
+
+  p1 --> ch
+  p2 --> ch
+  ch --> c
+
+  style p1 fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style p2 fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style ch fill:#fef9c3,stroke:#ca8a04,color:#713f12
+  style c  fill:#dcfce7,stroke:#16a34a,color:#14532d
 ```
 
 ```go

@@ -108,12 +108,12 @@ aplicacao:
 Um **package** é simplesmente uma pasta com arquivos `.go`. Todos os arquivos da mesma pasta pertencem ao mesmo package. É a forma do Go de organizar código em peças separadas — como gavetas de um armário.
 
 ```
-meu-projeto/
-├── main.go          ← package main (programa começa aqui)
-├── utils/
-│   └── texto.go     ← package utils
-└── models/
-    └── usuario.go   ← package models
+📦 meu-projeto/
+├── 📄 main.go          ← package main (programa começa aqui)
+├── 📁 utils/
+│   └── 📄 texto.go     ← package utils
+└── 📁 models/
+    └── 📄 usuario.go   ← package models
 ```
 
 Para usar algo de outro package, você **importa** ele:
@@ -178,16 +178,16 @@ go get github.com/alguma/lib@v1.2.3
 Se você colocar código dentro de uma pasta chamada `internal/`, apenas o **seu próprio módulo** pode importar esse package. Outros projetos que dependem do seu módulo são bloqueados pelo compilador:
 
 ```
-meu-projeto/
-├── internal/
-│   └── db/          ← 🔒 SÓ meu-projeto pode importar isso
-│       └── conn.go
-├── pkg/
-│   └── utils/       ← ✅ qualquer um pode importar
-│       └── texto.go
-└── cmd/
-    └── server/      ← ponto de entrada (package main)
-        └── main.go
+📦 meu-projeto/
+├── 🔒 internal/
+│   └── 📁 db/          ← SÓ meu-projeto pode importar isso
+│       └── 📄 conn.go
+├── 📁 pkg/
+│   └── 📁 utils/       ← ✅ qualquer um pode importar
+│       └── 📄 texto.go
+└── 📁 cmd/
+    └── 📁 server/      ← ponto de entrada (package main)
+        └── 📄 main.go
 ```
 
 Isso é ótimo para esconder detalhes internos que podem mudar sem aviso.
@@ -201,17 +201,17 @@ Se dois packages precisam se comunicar, a solução é criar um **terceiro packa
 ## Estrutura típica de um projeto Go
 
 ```
-meu-projeto/
-├── go.mod              ← define o módulo e dependências
-├── go.sum              ← checksums das dependências (gerado automaticamente)
-├── cmd/
-│   └── server/
-│       └── main.go     ← ponto de entrada: package main, func main()
-├── internal/
-│   ├── service/        ← lógica de negócio (privada)
-│   └── repository/     ← acesso a dados (privado)
-└── pkg/
-    └── utils/          ← utilitários reutilizáveis (público)
+📦 meu-projeto/
+├── 📋 go.mod              ← define o módulo e dependências
+├── 🔐 go.sum              ← checksums das dependências (gerado automaticamente)
+├── 📁 cmd/
+│   └── 📁 server/
+│       └── 📄 main.go     ← ponto de entrada: package main, func main()
+├── 🔒 internal/
+│   ├── 📁 service/        ← lógica de negócio (privada)
+│   └── 📁 repository/     ← acesso a dados (privado)
+└── 📁 pkg/
+    └── 📁 utils/          ← utilitários reutilizáveis (público)
 ```
 
 - **`cmd/`** — onde ficam os `main.go` (pode ter vários programas)

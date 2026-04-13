@@ -220,9 +220,19 @@ Parece uma operação só, mas na verdade são **três**:
 
 Se duas goroutines fazem isso ao mesmo tempo:
 
-```
-Goroutine A: lê 42 → soma → grava 43
-Goroutine B: lê 42 → soma → grava 43  ← leu 42 ANTES de A gravar 43!
+```mermaid
+sequenceDiagram
+  participant mem as 🗄️ Memória (contador=42)
+  participant A as 🔵 Goroutine A
+  participant B as 🔴 Goroutine B
+
+  A ->> mem: lê 42
+  B ->> mem: lê 42
+  Note over A: soma → 43
+  Note over B: soma → 43
+  A ->> mem: grava 43 ✅
+  B ->> mem: grava 43 ⚠️ sobrescreveu!
+  Note over mem: esperado: 44  got: 43 💥
 ```
 
 Resultado: duas goroutines incrementaram, mas o valor só subiu 1. Perdemos um incremento!

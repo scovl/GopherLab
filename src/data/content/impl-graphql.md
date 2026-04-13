@@ -134,10 +134,21 @@ aplicacao:
 
 Imagine que você tem uma API REST de rede social. Para mostrar o perfil de um usuário, você precisa:
 
-```
-GET /api/users/42          → nome, email, avatar, bio, endereço, telefone...
-GET /api/users/42/posts    → todos os posts
-GET /api/users/42/friends  → todos os amigos
+```mermaid
+flowchart TD
+  client(["📱 Cliente"])
+  r1(["🌐 GET /api/users/42\nnome · email · avatar · bio · endereço · telefone..."])
+  r2(["🌐 GET /api/users/42/posts\ntodos os posts"])
+  r3(["🌐 GET /api/users/42/friends\ntodos os amigos"])
+
+  client -->|"request 1"| r1
+  client -->|"request 2"| r2
+  client -->|"request 3"| r3
+
+  style client fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style r1    fill:#fff1f2,stroke:#fca5a5,color:#7f1d1d
+  style r2    fill:#fff1f2,stroke:#fca5a5,color:#7f1d1d
+  style r3    fill:#fff1f2,stroke:#fca5a5,color:#7f1d1d
 ```
 
 **Três requests**, e na tela do celular você só precisava do nome, avatar e os 3 últimos posts. O REST te deu **dados demais** (over-fetching) e exigiu **requests demais** (under-fetching).
@@ -258,11 +269,11 @@ go generate ./...
 O gqlgen gera essa estrutura:
 
 ```
-graph/
-├── schema.graphqls          ← seu schema (você escreve)
-├── schema.resolvers.go      ← resolvers (você implementa)
-├── generated/               ← código gerado (NÃO edite!)
-└── model/                   ← structs geradas (User, Post, etc.)
+📁 graph/
+├── 📄 schema.graphqls          ← seu schema (você escreve)
+├── 📄 schema.resolvers.go      ← resolvers (você implementa)
+├── 🔒 generated/               ← código gerado (NÃO edite!)
+└── 📁 model/                   ← structs geradas (User, Post, etc.)
 ```
 
 ### Passo 3: Implemente os resolvers (a lógica)

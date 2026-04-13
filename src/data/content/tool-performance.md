@@ -179,17 +179,47 @@ Imagine um restaurante:
 - **P (Processadores)** = os **fogões** da cozinha (geralmente 1 por CPU)
 - **M (Threads)** = os **cozinheiros** que usam os fogões
 
-```
-     Pedidos (G)          Fogões (P)        Cozinheiros (M)
-  ┌──────────────┐     ┌───────────┐      ┌──────────────┐
-  │ goroutine 1  │────▶│  P0       │◀────▶│  Thread OS 0 │
-  │ goroutine 2  │────▶│           │      └──────────────┘
-  │ goroutine 3  │     └───────────┘
-  │ goroutine 4  │────▶┌───────────┐      ┌──────────────┐
-  │ goroutine 5  │────▶│  P1       │◀────▶│  Thread OS 1 │
-  │ ...          │     └───────────┘      └──────────────┘
-  │ goroutine 1000│
-  └──────────────┘
+```mermaid
+flowchart LR
+  subgraph G["🍽️ Pedidos (G) — Goroutines"]
+    g1(["goroutine 1"])
+    g2(["goroutine 2"])
+    g3(["goroutine 3"])
+    g4(["goroutine 4"])
+    g5(["goroutine 5"])
+    gn(["... goroutine 1000"])
+  end
+
+  subgraph P["🍳 Fogões (P) — Processadores"]
+    p0(["P0"])
+    p1(["P1"])
+  end
+
+  subgraph M["👨‍🍳 Cozinheiros (M) — OS Threads"]
+    m0(["Thread OS 0"])
+    m1(["Thread OS 1"])
+  end
+
+  g1 --> p0
+  g2 --> p0
+  g3 --> p0
+  g4 --> p1
+  g5 --> p1
+  gn --> p1
+
+  p0 <--> m0
+  p1 <--> m1
+
+  style g1 fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style g2 fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style g3 fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style g4 fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style g5 fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style gn fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style p0 fill:#fef9c3,stroke:#ca8a04,color:#713f12
+  style p1 fill:#fef9c3,stroke:#ca8a04,color:#713f12
+  style m0 fill:#dcfce7,stroke:#16a34a,color:#14532d
+  style m1 fill:#dcfce7,stroke:#16a34a,color:#14532d
 ```
 
 ### Por que isso importa?
@@ -223,16 +253,34 @@ Enquanto os cozinheiros trabalham, o faxineiro (GC) limpa as mesas usadas (memó
 
 ### Como funciona (simplificado)
 
-```
-Seu código roda          GC limpa ao mesmo tempo
-     │                         │
-     ▼                         ▼
- [aloca memória]         [marca o que está em uso]
- [aloca mais]            [varre o que ninguém usa]
- [aloca mais]            [libera memória]
-     │                         │
-     ▼                         ▼
-  Pausa < 1ms  ◀──── única pausa (quase imperceptível)
+```mermaid
+flowchart LR
+  subgraph code["⚙️ Seu código roda"]
+    a1(["aloca memória"])
+    a2(["aloca mais"])
+    a3(["aloca mais"])
+    a1 --> a2 --> a3
+  end
+
+  subgraph gc["🧹 GC limpa ao mesmo tempo"]
+    g1(["marca o que\nestá em uso"])
+    g2(["varre o que\nninguém usa"])
+    g3(["libera\nmemória"])
+    g1 --> g2 --> g3
+  end
+
+  pause(["⏸️ Pausa < 1ms\nquase imperceptível"])
+
+  a3 --> pause
+  g3 --> pause
+
+  style a1   fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style a2   fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style a3   fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style g1   fill:#fef9c3,stroke:#ca8a04,color:#713f12
+  style g2   fill:#fef9c3,stroke:#ca8a04,color:#713f12
+  style g3   fill:#fef9c3,stroke:#ca8a04,color:#713f12
+  style pause fill:#dcfce7,stroke:#16a34a,color:#14532d
 ```
 
 ### Controlando o faxineiro
@@ -535,36 +583,23 @@ Ciclos de GC:       89
 
 ## Workflow Completo: Do "Está Lento" ao "Resolvido"
 
-```
-"Meu programa está lento!"
-         │
-         ▼
-   ┌─────────────┐
-   │ 1. Benchmark │  ← Mede o tamanho do problema
-   │ go test      │     (quanto tempo? quantas alocações?)
-   │ -bench       │
-   └──────┬──────┘
-          ▼
-   ┌─────────────┐
-   │ 2. pprof     │  ← Descobre ONDE está o problema
-   │ CPU profile  │     (qual função gasta mais tempo?)
-   └──────┬──────┘
-          ▼
-   ┌─────────────┐
-   │ 3. pprof     │  ← Descobre se é memória
-   │ Heap profile │     (qual função aloca mais?)
-   └──────┬──────┘
-          ▼
-   ┌─────────────┐
-   │ 4. Escape    │  ← Por que aloca tanto?
-   │ analysis     │     (o que escapa pro heap?)
-   └──────┬──────┘
-          ▼
-   ┌─────────────┐
-   │ 5. Otimiza   │  ← Corrige o bottleneck
-   │ e benchmark  │     (mede de novo: melhorou?)
-   │ de novo      │
-   └─────────────┘
+```mermaid
+flowchart TD
+  start(["🐌 \"Meu programa está lento!\""])
+  s1(["📏 1. Benchmark\ngo test -bench -benchmem\nMede o tamanho do problema\nquanto tempo? quantas alocações?"])
+  s2(["🔬 2. pprof CPU profile\ngo tool pprof .../profile\nDescobre ONDE está o problema\nqual função gasta mais tempo?"])
+  s3(["🧠 3. pprof Heap profile\ngo tool pprof .../heap\nDescobre se é memória\nqual função aloca mais?"])
+  s4(["🔍 4. Escape analysis\ngo build -gcflags=\"-m\"\nPor que aloca tanto?\no que escapa pro heap?"])
+  s5(["✅ 5. Otimiza + benchmark\nCorrige o bottleneck\nmede de novo: melhorou?"])
+
+  start --> s1 --> s2 --> s3 --> s4 --> s5
+
+  style start fill:#fff1f2,stroke:#fca5a5,color:#7f1d1d
+  style s1    fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style s2    fill:#fef9c3,stroke:#ca8a04,color:#713f12
+  style s3    fill:#fce7f3,stroke:#db2777,color:#831843
+  style s4    fill:#fef9c3,stroke:#ca8a04,color:#713f12
+  style s5    fill:#dcfce7,stroke:#16a34a,color:#14532d
 ```
 
 ---

@@ -517,23 +517,30 @@ func TestIntegracao(t *testing.T) {
 
 ## Resumo Visual: Anatomia de Um Teste em Go
 
-```
-soma_test.go                        soma.go
-┌─────────────────────────────┐    ┌──────────────────┐
-│ package calc                │    │ package calc      │
-│                             │    │                   │
-│ import "testing"            │    │ func Soma(a, b int) int {
-│                             │    │     return a + b  │
-│ func TestSoma(t *testing.T) │    │ }                 │
-│   casos := []struct{...}{   │    └──────────────────┘
-│     {"positivos", 1, 2, 3}, │
-│     {"zeros", 0, 0, 0},    │     go test -v
-│   }                         │         │
-│   for _, tc := range casos  │         ▼
-│     t.Run(tc.nome, ...)     │     === RUN TestSoma
-│   }                         │     --- PASS: TestSoma
-│ }                           │     PASS
-└─────────────────────────────┘
+```mermaid
+flowchart LR
+  subgraph testfile["📄 soma_test.go"]
+    tf(["package calc\nfunc TestSoma(t *testing.T)\n  casos := []struct{...}\n  for _, tc := range casos\n    t.Run(tc.nome, ...)"])
+  end
+
+  subgraph implfile["📄 soma.go"]
+    im(["package calc\nfunc Soma(a, b int) int\n    return a + b"])
+  end
+
+  runner(["$ go test -v"])
+
+  subgraph output["✅ Saída"]
+    out(["=== RUN   TestSoma\n=== RUN   TestSoma/positivos\n=== RUN   TestSoma/zeros\n--- PASS: TestSoma\nPASS"])
+  end
+
+  testfile --> runner
+  implfile --> runner
+  runner --> output
+
+  style tf     fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style im     fill:#fef9c3,stroke:#ca8a04,color:#713f12
+  style runner fill:#fce7f3,stroke:#db2777,color:#831843
+  style out    fill:#dcfce7,stroke:#16a34a,color:#14532d
 ```
 
 ---

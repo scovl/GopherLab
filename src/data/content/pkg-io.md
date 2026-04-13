@@ -248,9 +248,25 @@ Cada vez que você chama `Read` ou `Write` em um arquivo, Go faz uma **syscall**
 
 `bufio` resolve isso com um **buffer**: acumula dados em memória e faz uma syscall só quando o buffer enche.
 
-```
-Sem bufio:   Read → syscall → Read → syscall → Read → syscall  (3 syscalls)
-Com bufio:   Read → buffer → Read → buffer → Read → syscall    (1 syscall!)
+```mermaid
+flowchart TB
+  subgraph COM["✅  Com bufio  —  1 syscall"]
+    direction LR
+    b1(["📖 Read"]) --> buf(["📦 buffer"])
+    b2(["📖 Read"]) --> buf
+    b3(["📖 Read"]) --> buf
+    buf -->|"🚀 1 syscall"| os4(["🖥️ SO"])
+  end
+
+  subgraph SEM["❌  Sem bufio  —  3 syscalls"]
+    direction LR
+    r1(["📖 Read"]) -->|syscall| os1(["🖥️ SO"])
+    r2(["📖 Read"]) -->|syscall| os2(["🖥️ SO"])
+    r3(["📖 Read"]) -->|syscall| os3(["🖥️ SO"])
+  end
+
+  style COM fill:#f0fdf4,stroke:#86efac,color:#14532d
+  style SEM fill:#fff1f2,stroke:#fca5a5,color:#7f1d1d
 ```
 
 ### Lendo linha por linha com `bufio.Scanner`

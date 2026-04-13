@@ -331,8 +331,21 @@ mux.Handle("GET /static/",
 
 Middleware é uma função que roda **antes e/ou depois** do seu handler. Imagine como uma **cebola**: cada camada de middleware envolve o handler interno.
 
-```
-Request → [Log] → [Auth] → [SeuHandler] → Response
+```mermaid
+flowchart LR
+  req(["🌐 Request"])
+  log(["📝 Log"])
+  auth(["🔑 Auth"])
+  handler(["⚙️ SeuHandler"])
+  res(["✅ Response"])
+
+  req --> log --> auth --> handler --> res
+
+  style req    fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style log    fill:#fef9c3,stroke:#ca8a04,color:#713f12
+  style auth   fill:#fce7f3,stroke:#db2777,color:#831843
+  style handler fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style res    fill:#dcfce7,stroke:#16a34a,color:#14532d
 ```
 
 Um middleware de log que mede quanto tempo cada request leva:

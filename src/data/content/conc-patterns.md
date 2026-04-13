@@ -199,10 +199,23 @@ Você tem 10.000 tarefas para executar, mas rodar 10.000 goroutines simultâneas
 
 Crie um número fixo de goroutines (workers) que **pegam tarefas de uma fila** compartilhada:
 
-```
-                         ┌─ Worker 1 ─┐
-[Fila de tarefas] ──→   ├─ Worker 2 ─┤  ──→ [Resultados]
-                         └─ Worker 3 ─┘
+```mermaid
+flowchart LR
+  fila(["📋 Fila de tarefas"])
+  w1(["⚙️ Worker 1"])
+  w2(["⚙️ Worker 2"])
+  w3(["⚙️ Worker 3"])
+  res(["✅ Resultados"])
+
+  fila --> w1 --> res
+  fila --> w2 --> res
+  fila --> w3 --> res
+
+  style fila fill:#fef9c3,stroke:#ca8a04,color:#713f12
+  style w1   fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style w2   fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style w3   fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style res  fill:#dcfce7,stroke:#16a34a,color:#14532d
 ```
 
 > **Analogia:** pense num **banco** com 3 caixas (workers). Tem 50 pessoas na fila (jobs). Cada caixa atende uma pessoa de cada vez. Quando termina, chama a próxima. Não precisa de 50 caixas — 3 dão conta, só demora mais.
@@ -276,12 +289,29 @@ Esses dois padrões sempre andam juntos:
 - **Fan-out** = 1 produtor distribui trabalho para N workers (espalhar)
 - **Fan-in** = N workers enviam resultados para 1 channel (juntar)
 
-```
-Fan-out (espalhar):              Fan-in (juntar):
+```mermaid
+flowchart LR
+  subgraph FANOUT["📤 Fan-out (espalhar)"]
+    p(["🔵 Produtor"]) --> fw1(["⚙️ Worker 1"])
+    p --> fw2(["⚙️ Worker 2"])
+    p --> fw3(["⚙️ Worker 3"])
+  end
+  subgraph FANIN["📥 Fan-in (juntar)"]
+    iw1(["⚙️ Worker 1"]) --> col(["🟢 Coletor"])
+    iw2(["⚙️ Worker 2"]) --> col
+    iw3(["⚙️ Worker 3"]) --> col
+  end
 
-           ┌→ Worker 1             Worker 1 ─┐
-Produtor ──┼→ Worker 2             Worker 2 ──┼→ Coletor
-           └→ Worker 3             Worker 3 ─┘
+  style FANOUT fill:#fff7ed,stroke:#f97316,color:#7c2d12
+  style FANIN  fill:#f0fdf4,stroke:#16a34a,color:#14532d
+  style p   fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style col fill:#dcfce7,stroke:#16a34a,color:#14532d
+  style fw1 fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style fw2 fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style fw3 fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style iw1 fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style iw2 fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style iw3 fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
 ```
 
 O Worker Pool que vimos acima já **usa os dois**: jobs faz fan-out (1 channel → N workers) e results faz fan-in (N workers → 1 channel).
@@ -306,9 +336,21 @@ go func() {
 
 Um pipeline conecta estágios em sequência, cada um fazendo uma transformação:
 
-```
-[Gerar números] → [Dobrar] → [Filtrar > 50] → [Imprimir]
-     estágio 1      estágio 2     estágio 3       final
+```mermaid
+flowchart LR
+  g(["🔢 Gerar\nnúmeros"])
+  d(["✖️ Dobrar"])
+  f(["🔍 Filtrar\n> 50"])
+  i(["🖨️ Imprimir"])
+
+  g -->|"estágio 1"| d
+  d -->|"estágio 2"| f
+  f -->|"estágio 3"| i
+
+  style g fill:#e0f7ff,stroke:#0090b8,color:#0c4a6e
+  style d fill:#fef9c3,stroke:#ca8a04,color:#713f12
+  style f fill:#fce7f3,stroke:#db2777,color:#831843
+  style i fill:#dcfce7,stroke:#16a34a,color:#14532d
 ```
 
 Cada estágio é uma goroutine que lê de um channel e escreve em outro:
