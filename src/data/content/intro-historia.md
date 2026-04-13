@@ -77,11 +77,11 @@ O resultado foi Go: uma linguagem que **compila em segundos**, tem sintaxe simpl
 
 | Criador | Por que ele importa |
 |---|---|
-| **Ken Thompson** | Co-criou o Unix e a linguagem C. Ganhou o prêmio Turing (o "Nobel da computação") em 1983. Também co-criou o UTF-8, o encoding que o mundo inteiro usa |
-| **Rob Pike** | Trabalhou com Thompson no Unix e no Plan 9. Criou o suporte a UTF-8 em Go. É co-autor do livro "The Unix Programming Environment" |
-| **Robert Griesemer** | Trabalhou no motor JavaScript V8 (o que roda dentro do Chrome e do Node.js) e na Java HotSpot VM |
+| **[Ken Thompson](https://en.wikipedia.org/wiki/Ken_Thompson)** | Co-criou o [Unix](https://en.wikipedia.org/wiki/Unix) e a linguagem [C](https://en.wikipedia.org/wiki/C_(programming_language)). Ganhou o prêmio Turing (o "Nobel da computação") em 1983. Também co-criou o [UTF-8](https://en.wikipedia.org/wiki/UTF-8), o encoding que o mundo inteiro usa |
+| **[Rob Pike](https://en.wikipedia.org/wiki/Rob_Pike)** | Trabalhou com Thompson no [Unix](https://en.wikipedia.org/wiki/Unix) e no [Plan 9](https://en.wikipedia.org/wiki/Plan_9_from_Bell_Labs). Criou o suporte a UTF-8 em Go. É co-autor do livro "The Unix Programming Environment" |
+| **[Robert Griesemer](https://en.wikipedia.org/wiki/Robert_Griesemer)** | Trabalhou no motor [JavaScript V8](https://en.wikipedia.org/wiki/V8_(JavaScript_engine)) (o que roda dentro do Chrome e do Node.js) e na [Java HotSpot VM](https://en.wikipedia.org/wiki/Java_HotSpot_VM) |
 
-> **Curiosidade:** como Thompson co-criou UTF-8, Go nasceu com suporte nativo a Unicode. Strings em Go são UTF-8 por padrão — você não precisa configurar nada para trabalhar com acentos, emojis ou ideogramas chineses.
+> **Curiosidade:** como Thompson co-criou [UTF-8](https://en.wikipedia.org/wiki/UTF-8), Go nasceu com suporte nativo a Unicode. Strings em Go são UTF-8 por padrão — você não precisa configurar nada para trabalhar com acentos, emojis ou [ideogramas chineses](https://en.wikipedia.org/wiki/Chinese_characters).
 
 ## A linha do tempo
 
@@ -109,10 +109,10 @@ O nome oficial é **Go**. O problema é que "Go" é uma palavra muito genérica 
 
 Go é a linguagem por trás de muitas ferramentas que você provavelmente já usou (mesmo sem saber):
 
-- **Docker** — a plataforma de containers
-- **Kubernetes** — o orquestrador de containers
-- **Terraform** — infraestrutura como código
-- **Hugo** — gerador de sites estáticos (um dos mais rápidos do mundo)
-- **Prometheus** — monitoramento e alertas
+- **[Docker](https://www.docker.com/)** — a plataforma de containers
+- **[Kubernetes](https://kubernetes.io/)** — o orquestrador de containers
+- **[Terraform](https://www.terraform.io/)** — infraestrutura como código
+- **[Hugo](https://gohugo.io/)** — gerador de sites estáticos (um dos mais rápidos do mundo)
+- **[Prometheus](https://prometheus.io/)** — monitoramento e alertas
 
-Empresas como Google, Uber, Twitch, Dropbox e Mercado Livre usam Go em produção. A linguagem é especialmente popular para **APIs, microsserviços e ferramentas de DevOps**.
+Empresas como [Google](https://www.google.com/), [Uber](https://www.uber.com/), [Twitch](https://www.twitch.tv/), [Dropbox](https://www.dropbox.com/) e [Mercado Livre](https://www.mercadolivre.com/), [Itaú-unibanco](https://www.itau.com.br/) usam Go em produção. A linguagem é especialmente popular para **APIs, microsserviços e ferramentas de DevOps**.

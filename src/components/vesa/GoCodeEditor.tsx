@@ -21,6 +21,27 @@ export function GoCodeEditor({ referenceCode, referenceLabel, lessonId: _lessonI
   const [code, setCode] = React.useState('');
   const [running, setRunning] = React.useState(false);
   const [output, setOutput] = React.useState<{ text: string; isError: boolean } | null>(null);
+  const [refPct, setRefPct] = React.useState(50);
+  const columnsRef = React.useRef<HTMLDivElement>(null);
+  const dragging = React.useRef(false);
+
+  function onDividerPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    dragging.current = true;
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  function onDividerPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!dragging.current) return;
+    const container = columnsRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const pct = ((e.clientX - rect.left) / rect.width) * 100;
+    setRefPct(Math.min(80, Math.max(20, pct)));
+  }
+
+  function onDividerPointerUp() {
+    dragging.current = false;
+  }
 
   async function runCode() {
     if (!code.trim()) {
@@ -64,84 +85,109 @@ export function GoCodeEditor({ referenceCode, referenceLabel, lessonId: _lessonI
     URL.revokeObjectURL(url);
   }
 
-  return (
-    <div className="playground-section">
-      {referenceCode && (
-        <>
-          <div className="playground-ref-header">
-            <span>📖 {referenceLabel} — leia e <strong>digite</strong> no editor abaixo</span>
-          </div>
-          <div
-            className="playground-ref-code"
-            aria-label="Código de referência — não copiável"
-            onCopy={e => e.preventDefault()}
-            onCut={e => e.preventDefault()}
-          >
-            <SyntaxHighlighter
-              language="go"
-              style={oneLight}
-              customStyle={{
-                margin: 0,
-                borderRadius: 0,
-                fontSize: '0.85rem',
-                lineHeight: '1.6',
-              }}
-            >
-              {referenceCode}
-            </SyntaxHighlighter>
-          </div>
-        </>
-      )}
+  const refLines = referenceCode ? referenceCode.split('\n').length : 0;
+  const isSplit = refLines > 30;
 
-      <div className="playground-header">
-        <span className="playground-title">
-          <img src="/gopher.png" alt="" aria-hidden="true" width="20" height="20" style={{ verticalAlign: 'middle', marginRight: '0.3rem' }} /> Seu código
-        </span>
-        <div className="playground-toolbar">
-          <button
-            className="btn-play"
-            onClick={runCode}
-            disabled={running}
-            aria-label="Executar código"
+  return (
+    <div className={`playground-section${isSplit ? ' playground-section--split' : ''}`}>
+      <div className="playground-columns" ref={isSplit ? columnsRef : undefined}>
+        {referenceCode && (
+          <div
+            className="playground-pane playground-pane--ref"
+            style={isSplit ? { flex: 'none', width: `${refPct}%` } : undefined}
           >
-            {running ? '⏳ Executando…' : '▶ Executar'}
-          </button>
-          <button
-            className="btn-tool"
-            onClick={downloadCode}
-            disabled={!code.trim()}
-            aria-label="Baixar arquivo .go"
-          >
-            ⬇ Baixar .go
-          </button>
-          <button
-            className="btn-tool btn-tool-ghost"
-            onClick={() => { setCode(''); setOutput(null); }}
-            aria-label="Limpar editor"
-          >
-            ✕ Limpar
-          </button>
+            <div className="playground-ref-header">
+              <span>📖 {referenceLabel} — leia e <strong>digite</strong> no editor ao lado</span>
+            </div>
+            <div
+              className="playground-ref-code"
+              aria-label="Código de referência — não copiável"
+              onCopy={e => e.preventDefault()}
+              onCut={e => e.preventDefault()}
+            >
+              <SyntaxHighlighter
+                language="go"
+                style={oneLight}
+                customStyle={{
+                  margin: 0,
+                  borderRadius: 0,
+                  fontSize: '0.85rem',
+                  lineHeight: '1.6',
+                }}
+              >
+                {referenceCode}
+              </SyntaxHighlighter>
+            </div>
+          </div>
+        )}
+
+        {isSplit && (
+          <div
+            className="playground-divider"
+            aria-label="Arraste para redimensionar"
+            onPointerDown={onDividerPointerDown}
+            onPointerMove={onDividerPointerMove}
+            onPointerUp={onDividerPointerUp}
+          />
+        )}
+
+        <div
+          className="playground-pane playground-pane--editor"
+          style={isSplit ? { flex: 'none', width: `${100 - refPct}%` } : undefined}
+        >
+          <div className="playground-header">
+            <span className="playground-title">
+              <img src="/gopher.png" alt="" aria-hidden="true" width="20" height="20" style={{ verticalAlign: 'middle', marginRight: '0.3rem' }} /> Seu código
+            </span>
+            <div className="playground-toolbar">
+              <button
+                className="btn-play"
+                onClick={runCode}
+                disabled={running}
+                aria-label="Executar código"
+              >
+                {running ? '⏳ Executando…' : '▶ Executar'}
+              </button>
+              <button
+                className="btn-tool"
+                onClick={downloadCode}
+                disabled={!code.trim()}
+                aria-label="Baixar arquivo .go"
+              >
+                ⬇ Baixar .go
+              </button>
+              <button
+                className="btn-tool btn-tool-ghost"
+                onClick={() => { setCode(''); setOutput(null); }}
+                aria-label="Limpar editor"
+              >
+                ✕ Limpar
+              </button>
+            </div>
+          </div>
+
+          <Editor
+            value={code}
+            onValueChange={setCode}
+            highlight={src => Prism.highlight(src, Prism.languages.go, 'go')}
+            insertSpaces={false}
+            tabSize={4}
+            padding={16}
+            className="playground-editor-wrapper"
+            textareaClassName="playground-editor-input"
+            style={{
+              fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', monospace",
+              fontSize: '0.85rem',
+              lineHeight: '1.6',
+              minHeight: isSplit
+                ? `${refLines * 1.6 * 0.85 + 2}rem`
+                : `${Math.max(12, code.split('\n').length + 2) * 1.6 * 0.85 + 2}rem`,
+            }}
+            placeholder={'// Digite seu código aqui\npackage main\n\nimport "fmt"\n\nfunc main() {\n\t\n}'}
+            aria-label="Editor de código Go"
+          />
         </div>
       </div>
-
-      <Editor
-        value={code}
-        onValueChange={setCode}
-        highlight={src => Prism.highlight(src, Prism.languages.go, 'go')}
-        insertSpaces={false}
-        tabSize={4}
-        padding={16}
-        className="playground-editor-wrapper"
-        textareaClassName="playground-editor-input"
-        style={{
-          fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', monospace",
-          fontSize: '0.85rem',
-          lineHeight: '1.6',
-          minHeight: `${Math.max(12, code.split('\n').length + 2) * 1.6 * 0.85 + 2}rem`,
-        }}
-        placeholder={'// Digite seu código aqui\npackage main\n\nimport "fmt"\n\nfunc main() {\n\t\n}'}
-        aria-label="Editor de código Go"
-      />
 
       {output && (
         <>
