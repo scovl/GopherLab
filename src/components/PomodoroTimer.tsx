@@ -25,6 +25,7 @@ export function PomodoroTimer() {
   const [timeLeft, setTimeLeft] = useState(DURATIONS['focus']);
   const [running, setRunning] = useState(false);
   const [sessions, setSessions] = useState(0);
+  const [showHelp, setShowHelp] = useState(false);
   const intervalRef = useRef<number | null>(null);
 
   const clearTimer = useCallback(() => {
@@ -164,7 +165,32 @@ export function PomodoroTimer() {
         >
           ↺
         </button>
+        <button
+          className="pomodoro-btn pomodoro-btn--help"
+          onClick={() => setShowHelp(h => !h)}
+          aria-label="O que é Pomodoro?"
+          aria-expanded={showHelp}
+        >
+          ?
+        </button>
       </div>
+
+      {showHelp && (
+        <div className="pomodoro-help">
+          <p>
+            A técnica Pomodoro divide o estudo em blocos de 25 min de foco
+            seguidos de pausas curtas. Após 4 sessões, faça uma pausa longa.
+            Isso melhora a concentração e reduz a fadiga mental.
+          </p>
+          <a
+            href="https://www.youtube.com/watch?v=hfxfJ7Qa4sg"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            🎬 Assista uma explicação rápida
+          </a>
+        </div>
+      )}
 
       <div className="pomodoro-sessions" aria-live="polite">
         {sessions > 0 && <span>🔥 {sessions} {sessions === 1 ? 'sessão' : 'sessões'}</span>}

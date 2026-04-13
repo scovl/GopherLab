@@ -94,7 +94,7 @@ export function VesaPhases({ vesa, lessonId }: Readonly<VesaPhasesProps>) {
         <div className="vesa-nav-spacer" />
         {currentIndex < PHASE_ORDER.length - 1 && (
           <button
-            className="btn btn-primary"
+            className="btn btn-phase"
             onClick={() => handlePhaseChange(PHASE_ORDER[currentIndex + 1])}
           >
             {VESA_LABELS[PHASE_ORDER[currentIndex + 1]].label} →

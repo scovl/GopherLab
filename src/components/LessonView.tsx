@@ -88,8 +88,9 @@ export function LessonView({ lesson, module, onBack, onNavigate, onPinNote }: Re
           </button>
         ) : <span />}
         {next ? (
-          <button className="btn btn-primary" onClick={() => onNavigate(next.id)}>
-            {next.title} →
+          <button className="btn btn-next-lesson" onClick={() => onNavigate(next.id)}>
+            <span className="btn-next-lesson__label">Próximo tópico</span>
+            <span className="btn-next-lesson__title">{next.title} →</span>
           </button>
         ) : <span />}
       </nav>

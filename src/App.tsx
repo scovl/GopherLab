@@ -7,6 +7,7 @@ import { AccessibilityPanel } from './components/AccessibilityPanel';
 import { useRoadmap } from './hooks/useRoadmap';
 import { useProgress } from './context/ProgressContext';
 import { useNoteShelf, ShelfStickyManager, type ShelfNote } from './components/NoteShelf';
+import { ScrollToTop } from './components/ScrollToTop';
 
 type AppView = 'roadmap' | 'lesson' | 'accessibility';
 
@@ -144,6 +145,8 @@ export function App() {
         onClose={handleCloseShelfNote}
         onDelete={handleDeleteShelfNote}
       />
+
+      <ScrollToTop />
     </div>
   );
 }

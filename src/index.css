@@ -2304,6 +2304,49 @@ body {
   background: var(--bg-secondary);
 }
 
+/* Outlined — for VESA phase navigation (within lesson) */
+.btn-phase {
+  background: transparent;
+  color: var(--accent);
+  border: 1.5px solid var(--accent);
+}
+
+.btn-phase:hover {
+  background: var(--accent-light);
+  border-color: var(--accent);
+}
+
+/* Green — for lesson-to-lesson navigation (complete & advance) */
+.btn-next-lesson {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+  background: var(--success);
+  color: #fff;
+  border-color: var(--success);
+  padding: 0.5rem 1.2rem;
+  line-height: 1.2;
+}
+
+.btn-next-lesson:hover {
+  background: #27ae60;
+  border-color: #27ae60;
+}
+
+.btn-next-lesson__label {
+  font-size: 0.65rem;
+  font-weight: 400;
+  opacity: 0.85;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.btn-next-lesson__title {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
 .btn-ghost {
   border: none;
   background: none;
@@ -2491,6 +2534,61 @@ body {
 
 .app-footer a:hover {
   color: var(--accent, #0ea5e9);
+}
+
+/* ===================== Mermaid Diagrams ===================== */
+
+.mermaid-diagram {
+  margin: 1.2rem 0;
+  overflow-x: auto;
+  text-align: center;
+  background: var(--bg-primary);
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.mermaid-diagram svg {
+  max-width: 100%;
+  border-radius: 10px;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.08));
+}
+
+/* ===================== Scroll to Top ===================== */
+
+.scroll-to-top {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(12px);
+  transition: opacity 0.3s ease, transform 0.3s ease, box-shadow 0.2s;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  z-index: 150;
+}
+
+.scroll-to-top.visible {
+  opacity: 0.85;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+
+.scroll-to-top:hover {
+  opacity: 1;
+  box-shadow: 0 4px 16px rgba(0, 173, 216, 0.4);
 }
 
 /* ===================== Selection Toolbar & Highlights ===================== */
@@ -2927,6 +3025,42 @@ body {
   color: #fff;
   border-color: var(--accent);
   box-shadow: 0 2px 10px rgba(0, 173, 216, 0.35);
+}
+
+.pomodoro-btn--help {
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.pomodoro-help {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  text-align: left;
+  animation: fadeSlideIn 0.2s ease;
+}
+
+.pomodoro-help p {
+  margin: 0 0 0.4rem;
+}
+
+.pomodoro-help a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.pomodoro-help a:hover {
+  text-decoration: underline;
+}
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .pomodoro-sessions {
