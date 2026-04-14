@@ -174,6 +174,7 @@ func main() {
 > ```bash
 > goimports -w .
 > ```
+> Instalação: `go install golang.org/x/tools/cmd/goimports@latest`
 
 ---
 
@@ -223,7 +224,7 @@ Imagine que em vez de **um** revisor, você tem **100 revisores** lendo seu cód
 ### Instalação
 
 ```bash
-go install github.com/golangci-lint/golangci-lint/cmd/golangci-lint@latest
+go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 ```
 
 ### Como usar
@@ -265,7 +266,8 @@ linters-settings:
 ### Exemplo prático: errcheck em ação
 
 ```go
-// ❌ errcheck vai reclamar — você ignorou o erro!
+// ❌ Dois problemas: (1) errcheck reclama; (2) se o arquivo não existir,
+//    file é nil e defer file.Close() causa PANIC em runtime
 file, _ := os.Open("dados.txt")
 defer file.Close()
 
@@ -346,23 +348,9 @@ go func() { mu.Lock(); contador++; mu.Unlock() }()
 
 ---
 
-## 6. Escape Analysis — Raio-X de Performance
+## 6. Próximos Passos: Performance
 
-### Analogia: caixa no balcão vs caixa no depósito
-
-Em Go, variáveis podem ficar na **stack** (balcão — rápido, automático) ou no **heap** (depósito — mais lento, precisa do coletor de lixo). A escape analysis mostra onde cada variável vai.
-
-```bash
-go build -gcflags="-m" ./...
-```
-
-Saída:
-```
-./main.go:10:6: x escapes to heap     ← foi pro depósito (mais lento)
-./main.go:15:6: y does not escape      ← ficou no balcão (rápido)
-```
-
-> **Quando usar:** só quando precisar otimizar performance. No dia a dia, não se preocupe com isso.
+Você agora tem código correto e seguro. O próximo passo é **medir e otimizar** desempenho — `go test -bench`, `pprof` e escape analysis (`go build -gcflags="-m"`). Isso é tema da próxima aula: **Profiling, Runtime e Otimização**.
 
 ---
 
@@ -444,5 +432,4 @@ make check
 | Verificação completa de qualidade | `golangci-lint run` |
 | Detectar data races | `go test -race ./...` |
 | Verificar vulnerabilidades | `govulncheck ./...` |
-| Saber o que vai pro heap | `go build -gcflags="-m" ./...` |
 | Pipeline de CI completo | Makefile com todos acima |

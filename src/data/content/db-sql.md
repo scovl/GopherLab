@@ -18,6 +18,7 @@ experimentacao:
     import (
     	"context"
     	"database/sql"
+    	"errors"
     	"fmt"
     	"log"
     	"time"
@@ -170,8 +171,10 @@ aplicacao:
     // TODO: implemente Listar com paginação (LIMIT $1 OFFSET $2)
     // TODO: implemente Atualizar(ctx, id int, titulo, autor string)
     // TODO: implemente Deletar(ctx, id int)
-    // TODO: implemente BuscarPorTitulo com ILIKE '%$1%'
-    //       Dica: use ILIKE para case-insensitive em PostgreSQL
+    // TODO: implemente BuscarPorTitulo com ILIKE
+    //       Dica: passe "%"+titulo+"%" como valor do placeholder $1
+    //       Ex: db.QueryContext(ctx, "WHERE titulo ILIKE $1", "%"+titulo+"%")
+    //       OU use SQL: WHERE titulo ILIKE '%' || $1 || '%'
 
     func main() {
     	db, err := sql.Open("postgres", "host=localhost dbname=livros sslmode=disable")
@@ -332,7 +335,7 @@ err := db.QueryRowContext(ctx,
 ).Scan(&nome, &idade)
 //     ^^^^^ mapeia cada coluna para uma variável
 
-if err == sql.ErrNoRows {
+if errors.Is(err, sql.ErrNoRows) {
     fmt.Println("usuário não encontrado")  // não é erro "fatal"
 } else if err != nil {
     log.Fatal(err)  // erro real (rede caiu, SQL errado, etc.)
@@ -452,6 +455,10 @@ import (
 )
 
 db, err := sql.Open("pgx", "postgres://user:pass@localhost/db")
+if err != nil {
+    log.Fatal(err)
+}
+defer db.Close()
 ```
 
 ### Usando pgx direto (máxima performance)

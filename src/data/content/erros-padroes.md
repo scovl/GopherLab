@@ -498,6 +498,20 @@ Sem `Unwrap`, `errors.Is` e `errors.As` **não conseguem** olhar dentro do seu e
 
 ## Os 3 erros mais comuns de iniciantes
 
+### 0. Mensagens de erro com maiúscula ou pontuação no final
+
+```go
+// ❌ Go style guide proíbe
+return errors.New("Arquivo não encontrado.")
+return errors.New("Operação falhou!")
+
+// ✅ Minúsculas, sem pontuação final
+return errors.New("arquivo não encontrado")
+return errors.New("operação falhou")
+```
+
+O motivo: erros costumam ser combinados com `fmt.Errorf("prefixo: %w", err)`. Se a mensagem começar com maiúscula, o resultado fica estranho: `"ao abrir config: Arquivo não encontrado."` — a maiúscula no meio da frase quebra a leitura.
+
 ### 1. Usar `%v` em vez de `%w`
 
 ```go

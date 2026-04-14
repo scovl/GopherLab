@@ -16,7 +16,7 @@ experimentacao:
     package main
 
     import (
-    	"embed"
+    	_ "embed"
     	"fmt"
     	"html/template"
     	"os"
@@ -44,7 +44,10 @@ experimentacao:
     			return fmt.Errorf("template: %w", err)
     		}
     		os.MkdirAll(nome, 0o755)
-    		f, _ := os.Create(nome + "/main.go")
+    		f, err := os.Create(nome + "/main.go")
+    		if err != nil {
+    			return fmt.Errorf("criar arquivo: %w", err)
+    		}
     		defer f.Close()
     		return tmpl.Execute(f, map[string]string{"Name": nome})
     	},
@@ -110,7 +113,7 @@ aplicacao:
     package main
 
     import (
-    	"embed"
+    	_ "embed"
     	"fmt"
     	"os"
 
@@ -152,7 +155,6 @@ aplicacao:
 
     func main() {
     	_ = defaultConfig
-    	_ = embed.FS{}
     	if err := rootCmd.Execute(); err != nil {
     		fmt.Fprintln(os.Stderr, err)
     		os.Exit(1)

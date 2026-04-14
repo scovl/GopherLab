@@ -21,6 +21,7 @@ experimentacao:
     	"math/rand"
     	"net/http"
     	_ "net/http/pprof"
+    	"os"
     	"runtime"
     	"time"
     )
@@ -54,7 +55,9 @@ experimentacao:
     	// pprof endpoints registrados automaticamente
     	go func() {
     		fmt.Println("pprof em http://localhost:6060/debug/pprof/")
-    		http.ListenAndServe(":6060", nil)
+    		if err := http.ListenAndServe(":6060", nil); err != nil {
+    			fmt.Fprintln(os.Stderr, "pprof:", err)
+    		}
     	}()
 
     	go monitorar()
@@ -80,6 +83,8 @@ experimentacao:
     **GC concurrent tri-color** — marca objetos como branco (não visitado), cinza (visitado, refs não escaneadas), preto (visitado, refs escaneadas). Pausas `<1ms` na maioria dos casos. `GOGC=100` (padrão): GC quando heap dobra. `GOMEMLIMIT` (Go 1.19+): limite hard de memória — GC roda mais agressivo quando próximo do limite.
 
     **Profiling workflow** — (1) `go tool pprof http://localhost:6060/debug/pprof/profile?seconds=30` para CPU; (2) `go tool pprof -http=:8081 profile.pb.gz` para web UI; (3) `go tool trace trace.out` para visão de scheduling/GC; (4) `go build -gcflags="-m"` para escape analysis.
+
+    **`runtime.GC()`** — força coleta imediata. Útil para isolar alocações em demos de profiling, mas **nunca use em produção**: bypassa as heurísticas otimizadas do GC e aumenta latência.
 socializacao:
   discussao: Como o scheduler M:P:G do Go compara com threads do OS?
   pontos:
@@ -104,11 +109,7 @@ aplicacao:
 
     import (
     	"fmt"
-    	"net/http"
-    	_ "net/http/pprof"
-    	"runtime"
     	"strings"
-    	"testing"
     )
 
     // Função ineficiente — concatenação com +
@@ -129,16 +130,17 @@ aplicacao:
     	return b.String()
     }
 
-    // TODO: implemente BenchmarkConcatIneficiente
+    // TODO: implemente BenchmarkConcatIneficiente em concat_test.go
     //   func BenchmarkConcatIneficiente(b *testing.B) { ... }
     //   Use b.N, -benchmem para ver allocs/op
 
-    // TODO: implemente BenchmarkConcatOtimizado
+    // TODO: implemente BenchmarkConcatOtimizado em concat_test.go
     //   func BenchmarkConcatOtimizado(b *testing.B) { ... }
 
-    // TODO: adicione pprof a um HTTP server seu
-    //   e colete CPU profile de 30 segundos com:
-    //   go tool pprof http://localhost:6060/debug/pprof/profile?seconds=30
+    // TODO: adicione pprof a um server.go separado:
+    //   import _ "net/http/pprof"
+    //   go func() { http.ListenAndServe(":6060", nil) }()
+    //   Colete: go tool pprof http://localhost:6060/debug/pprof/profile?seconds=30
 
     // TODO: rode escape analysis no seu código:
     //   go build -gcflags="-m" ./...
@@ -149,9 +151,6 @@ aplicacao:
     //   GOGC=200 go run . (GC menos frequente, mais memória)
 
     func main() {
-    	_ = testing.Benchmark
-    	_ = http.ListenAndServe
-    	_ = runtime.ReadMemStats
     	strs := make([]string, 1000)
     	for i := range strs {
     		strs[i] = "x"
@@ -162,6 +161,8 @@ aplicacao:
     }
 
 ---
+
+> Na aula anterior você garantiu que seu código é correto e seguro. Agora vamos aprender a **medir e otimizar** — porque otimização sem medição é apenas adivinhar.
 
 Imagine que seu programa Go está lento. Como descobrir **onde** está o problema? Você não adivinha — você usa ferramentas que mostram **exatamente** onde o tempo e a memória estão sendo gastos. É como levar o carro no mecânico que pluga o computador de diagnóstico.
 
@@ -345,11 +346,11 @@ func BenchmarkConcatComMais(b *testing.B) {
 
 func BenchmarkConcatComBuilder(b *testing.B) {
     for i := 0; i < b.N; i++ {
-        var b strings.Builder
+        var sb strings.Builder
         for j := 0; j < 100; j++ {
-            b.WriteString("x")  // ✅ rápido: escreve no mesmo buffer
+            sb.WriteString("x")  // ✅ rápido: escreve no mesmo buffer
         }
-        _ = b.String()
+        _ = sb.String()
     }
 }
 ```
@@ -415,7 +416,9 @@ import _ "net/http/pprof"  // ← só isso!
 func main() {
     // Inicia servidor de diagnóstico em porta separada
     go func() {
-        http.ListenAndServe(":6060", nil)
+        if err := http.ListenAndServe(":6060", nil); err != nil {
+            log.Fatal("pprof:", err)
+        }
     }()
 
     // ... seu código normal aqui ...
@@ -630,3 +633,7 @@ flowchart TD
 | Limitar memória total | `GOMEMLIMIT=512MiB` |
 | Ver GC em tempo real | `GODEBUG=gctrace=1` |
 | Comparar benchmarks antes/depois | `benchstat antes.txt depois.txt` |
+
+---
+
+> Com código testado, analisado e otimizado, chegou a hora de colocá-lo em produção. Na próxima aula: **Docker multistage, cross-compilation e Kubernetes**.

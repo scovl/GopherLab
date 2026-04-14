@@ -3,12 +3,13 @@ title: Constraints Avançadas
 description: constraints.Ordered, union types, ~T, limitações e design patterns.
 estimatedMinutes: 40
 recursos:
-  - https://pkg.go.dev/golang.org/x/exp/constraints
+  - https://pkg.go.dev/cmp
   - https://go.dev/blog/intro-generics
 experimentacao:
-  desafio: Implemente BinarySearch e MergeSort genéricos usando constraints.Ordered. Compare performance com sort.Slice.
+  desafio: Implemente BinarySearch e MergeSort genéricos usando cmp.Ordered. Compare performance com sort.Slice.
   dicas:
-    - go get golang.org/x/exp para usar constraints
+    - cmp.Ordered está na stdlib desde Go 1.21 — nenhum go get necessário
+    - Para Go < 1.21, use golang.org/x/exp/constraints (go get golang.org/x/exp)
     - "Crie sua constraint: type Numeric interface { ~int | ~float64 }"
     - "~ é essencial para aceitar type aliases"
   codeTemplate: |

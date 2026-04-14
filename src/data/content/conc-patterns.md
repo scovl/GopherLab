@@ -179,6 +179,8 @@ aplicacao:
 
 ## O problema: como controlar a bagunça de goroutines?
 
+> **Pré-requisitos desta lição:** goroutines e channels (lição 1) e `sync.WaitGroup` / `sync.Mutex` (lição 2). Os exemplos também usam o pacote `context` — se ainda não passou pelo módulo Standard Library, o essencial é: `context.WithTimeout(ctx, dur)` cria um contexto que cancela após o tempo dado, e `ctx.Done()` é um channel que é fechado quando isso acontece.
+
 Na lição anterior, você aprendeu a criar goroutines e channels. Mas na vida real, surgem perguntas:
 
 - "Preciso baixar 1000 URLs, mas não posso abrir 1000 conexões de uma vez"
@@ -472,6 +474,8 @@ Quando o usuário aperta **Ctrl+C**, você não quer cortar tudo no meio. Quer:
 1. Parar de aceitar trabalho novo
 2. Terminar o trabalho em andamento
 3. Fechar tudo de forma limpa
+
+> `os.Interrupt` é o **sinal SIGINT** — o sinal que o sistema operacional envia quando Ctrl+C é apertado. `signal.NotifyContext` converte esse sinal de SO em cancelamento de context, integrando o mecanismo de shutdown do OS com o sistema de cancelamento do Go.
 
 ```go
 func main() {

@@ -1,13 +1,13 @@
 ---
-title: Sistema de Tipos e Variáveis
-description: Tipos primitivos, var, :=, constantes, iota, zero values, conversão e escopo.
+title: Sistema de Tipos
+description: Tipos numéricos (int8–64, float32/64), constantes, iota, conversão explícita e strconv.
 estimatedMinutes: 45
 recursos:
   - https://go.dev/tour/basics/8
   - https://gobyexample.com/variables
   - https://gobyexample.com/constants
 experimentacao:
-  desafio: Crie variáveis de todos os tipos básicos do Go, imprima seus zero values. Crie uma enumeração com iota para estados de um pedido (Pendente, Pago, Enviado, Entregue). Teste conversões entre int, float64 e string.
+  desafio: "Crie uma enumeração com iota para estados de um pedido (Pendente, Pago, Enviado, Entregue). Experimente int8, int32 e int64 para ver diferença de range. Teste as três formas de converter int para string: string(), strconv.Itoa() e fmt.Sprintf()."
   dicas:
     - Use %T em fmt.Printf para ver o tipo de uma variável
     - "Conversão string ↔ int: strconv.Itoa(), strconv.Atoi()"
@@ -51,7 +51,7 @@ experimentacao:
 
     **`string(65)`** — converte o inteiro 65 para o **caractere Unicode** de code point 65: `"A"`. Para converter o número para a string `"65"`, use `strconv.Itoa(65)` ou `fmt.Sprintf("%d", 65)`.
 
-    **Valores zero** — `var x int` → `0`, `var s string` → `""`, `var b bool` → `false`, `var p *int` → `nil`. Em Go, toda variável tem um valor zero garantido — nunca fica "indefinida".
+    **Valor zero de ponteiro** — `var p *int` tem valor zero `nil`. Ponteiros não inicializados são `nil`; desreferenciar `nil` causa panic. Os zero values dos tipos básicos (int→0, string→"", bool→false) já foram vistos em `intro-variaveis`.
 
     **Conversão explícita** — `float64(idade)` e `int(f)` são obrigatórias. Go não converte implicitamente entre tipos. `int(f)` **trunca** (não arredonda) a parte fracionária.
 

@@ -539,14 +539,16 @@ service.Criar(User{Nome: "Alice"})
 
 ```
 Handler (HTTP)           → decodifica request, chama service, envia response
-    ↓
+    ↓ usa
 Service (Negócio)        → valida, aplica regras, chama repository
-    ↓
-Repository (Interface)   → contrato: Save, Find, Delete
-    ↓
-PostgresRepo (Concreto)  → implementação real
-MockRepo (Concreto)      → implementação fake para testes
+    ↓ depende de (interface, nunca do concreto)
+UserStorage (Interface)  → contrato: Save, Find, Delete
+    ↑ implementado por
+    ├── PostgresRepo (Concreto)  → implementação real
+    └── MockRepo (Concreto)      → implementação fake para testes
 ```
+
+> **Esse padrão é o esqueleto da Clean Architecture.** No próximo módulo vamos formalizar esse layout num projeto completo — você vai reconhecer todo o código.
 
 ```go
 // Montando tudo (main.go):

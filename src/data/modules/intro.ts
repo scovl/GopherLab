@@ -6,5 +6,5 @@ export const introModule: ModuleMeta = {
   description: 'Conheça Go, sua história, motivações e configure seu ambiente de desenvolvimento.',
   icon: 'Rocket',
   color: '#00ADD8',
-  lessons: ['intro-historia', 'intro-motivacoes', 'intro-variaveis', 'intro-hello-world'],
+  lessons: ['intro-historia', 'intro-motivacoes', 'intro-variaveis'],
 };

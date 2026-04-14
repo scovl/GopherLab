@@ -5,6 +5,7 @@ estimatedMinutes: 45
 recursos:
   - https://github.com/golang-jwt/jwt
   - https://jwt.io/
+  - https://pkg.go.dev/golang.org/x/crypto/bcrypt
 experimentacao:
   desafio: "Crie middleware JWT que proteja rotas: extraia token do header, valide e injete user ID no context da request."
   dicas:
@@ -159,7 +160,10 @@ aplicacao:
 
     func login(w http.ResponseWriter, r *http.Request) {
     	var input Usuario
-    	json.NewDecoder(r.Body).Decode(&input)
+    	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+    		http.Error(w, `{"error":"JSON inválido"}`, http.StatusBadRequest)
+    		return
+    	}
     	u, ok := usuarios[input.Email]
     	if !ok || bcrypt.CompareHashAndPassword([]byte(u.Hash), []byte(input.Senha)) != nil {
     		http.Error(w, `{"error":"credenciais inválidas"}`, http.StatusUnauthorized)
@@ -215,6 +219,8 @@ aplicacao:
 ---
 
 ## O problema: como a API sabe quem você é?
+
+> **Contexto:** esta lição adiciona autenticação sobre uma API REST — o tipo que você construiu nas duas aulas anteriores (stdlib ou com Chi/Gin). Os exemplos usam a stdlib pura por simplicidade, mas o padrão de middleware JWT funciona **igualmente** em Chi (`r.Use(authMiddleware)`) e Gin (`router.Use(ginAuthMiddleware)`). Ao terminar, você vai saber encaixar JWT em qualquer das abordagens.
 
 HTTP é **stateless** — cada request é independente. O servidor não "lembra" quem você é entre uma request e outra.
 
@@ -410,7 +416,9 @@ func authMiddleware(next http.Handler) http.Handler {
         }
 
         // 4. Injeta os dados do usuário no context
-        ctx := context.WithValue(r.Context(), "userID", (*claims)["sub"])
+        // Usa tipo personalizado como chave para evitar colisões e aviso do go vet
+        type ctxKey string
+        ctx := context.WithValue(r.Context(), ctxKey("userID"), (*claims)["sub"])
         next.ServeHTTP(w, r.WithContext(ctx))
     })
 }
@@ -421,7 +429,9 @@ func authMiddleware(next http.Handler) http.Handler {
 ```go
 func meusDados(w http.ResponseWriter, r *http.Request) {
     // Pega o userID que o middleware colocou no context
-    userID := r.Context().Value("userID").(string)
+    // Usa o mesmo tipo de chave definido no middleware
+    type ctxKey string
+    userID := r.Context().Value(ctxKey("userID")).(string)
     fmt.Fprintf(w, `{"usuario": "%s"}`, userID)
 }
 ```

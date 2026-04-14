@@ -9,10 +9,10 @@ export const foundationModule: ModuleMeta = {
   lessons: [
     'found-tipos',
     'found-strings-runes',
-    'found-colecoes',
     'found-controle',
-    'found-funcoes',
+    'found-colecoes',
     'found-ponteiros',
+    'found-funcoes',
     'found-structs',
     'found-interfaces',
     'found-packages',

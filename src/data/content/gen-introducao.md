@@ -203,6 +203,8 @@ func MaxString(strs []string) string {
 
 Com generics (Go 1.18+), você escreve **uma vez** e funciona para todos os tipos:
 
+> `cmp.Ordered` é uma constraint da stdlib (Go 1.21) que permite usar `<`, `>`, `<=`, `>=`. A seção de Constraints explica como ela funciona internamente — por ora, leia como "um tipo que suporta ordenação".
+
 ```go
 func Max[T cmp.Ordered](nums []T) T {
     best := nums[0]

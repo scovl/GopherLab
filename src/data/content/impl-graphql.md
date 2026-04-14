@@ -54,7 +54,9 @@ experimentacao:
     		}),
     	)
 
-    	http.Handle("/", playground.Handler("GraphQL", "/query"))
+    	if os.Getenv("ENV") == "dev" {
+    		http.Handle("/", playground.Handler("GraphQL", "/query"))
+    	}
     	http.Handle("/query", srv)
 
     	log.Println("GraphQL playground em http://localhost:8080/")
@@ -302,8 +304,10 @@ func (r *queryResolver) Users(ctx context.Context) ([]*model.User, error) {
 }
 
 func (r *mutationResolver) CreateUser(ctx context.Context, name string, email string) (*model.User, error) {
+    // Gera um ID sequencial simples — em produção, use UUID (github.com/google/uuid)
+    id := fmt.Sprintf("%d", len(r.users)+1)
     user := &model.User{
-        ID:    fmt.Sprintf("%d", len(r.users)+1),
+        ID:    id,
         Name:  name,
         Email: email,
     }

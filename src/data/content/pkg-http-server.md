@@ -55,6 +55,7 @@ socializacao:
     - Stdlib é suficiente para muitos casos (Go 1.22+ melhorou muito)
     - "Frameworks: middleware chain, validação, binding automático"
     - "Performance: Go já é rápido — framework adiciona conveniência, não velocidade"
+    - "Próxima lição: context para propagar timeouts e cancelamento nos handlers — essencial em produção"
   diasDesafio: Dias 19–28
   sugestaoBlog: "Servidores HTTP em Go: net/http, templates e quando usar frameworks"
   hashtagsExtras: '#golang #http #server #webdev'
@@ -355,7 +356,7 @@ func logMiddleware(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
         start := time.Now()           // ⏱️ Marca o início
         next.ServeHTTP(w, r)          // Chama o próximo handler
-        log.Printf("%s %s %v",        // 📝 Registra depois
+        log.Printf("%s %s %v",        // 📝 log básico — lição 5 mostra slog estruturado
             r.Method, r.URL.Path, time.Since(start))
     })
 }

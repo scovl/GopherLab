@@ -242,6 +242,30 @@ db.Delete(&user)
 
 > **Perceba:** você nunca escreveu `INSERT INTO`, `SELECT`, `UPDATE` ou `DELETE`. O GORM fez tudo. Você só trabalha com structs Go.
 
+### Tratando erros no GORM
+
+Todos os métodos GORM retornam `*gorm.DB` — o erro fica em `.Error`:
+
+```go
+// Sempre verifique .Error após operações
+result := db.Create(&User{Name: "Alice", Email: "alice@go.dev"})
+if result.Error != nil {
+    log.Printf("erro ao criar usuário: %v", result.Error)
+}
+
+// Equivalente ao sql.ErrNoRows da aula anterior:
+var user User
+if err := db.First(&user, "email = ?", "alice@go.dev").Error; err != nil {
+    if errors.Is(err, gorm.ErrRecordNotFound) {
+        // registro não existe
+    } else {
+        // erro real (conexão, SQL errado)
+    }
+}
+```
+
+> **Regra prática:** `gorm.ErrRecordNotFound` é o equivalente GORM de `sql.ErrNoRows`. Ambos significam "não encontrei nada" — não são erros fatais.
+
 ### As tags `gorm:"..."` mais comuns
 
 | Tag | O que faz | Exemplo |
@@ -306,6 +330,21 @@ autor := Autor{
 }
 db.Create(&autor)
 // GORM insere o autor, pega o ID gerado, e insere os livros com AutorID preenchido
+```
+
+### Transações no GORM
+
+O GORM tem um helper que encapsula o `BeginTx` + `defer Rollback` + `Commit` que você viu na aula anterior:
+
+```go
+err := db.Transaction(func(tx *gorm.DB) error {
+    if err := tx.Create(&conta1).Error; err != nil {
+        return err  // Rollback automático
+    }
+    return tx.Save(&conta2).Error
+})
+// Se Transaction() retorna nil → Commit automático.
+// Se retorna erro → Rollback automático. Tudo ou nada — mesmo conceito da aula anterior.
 ```
 
 ---
@@ -394,7 +433,9 @@ func (q *Queries) DeleteUser(ctx context.Context, id int32) error { ... }
 ### Usando o código gerado
 
 ```go
-queries := db.New(conn)
+// conn é o *sql.DB da aula anterior — SQLC usa o mesmo driver
+// sqlDB, _ := sql.Open("postgres", dsn)
+queries := db.New(sqlDB)
 
 // Type-safe! Se o SQL retorna id, name, email → a struct tem esses campos
 user, err := queries.GetUser(ctx, 42)

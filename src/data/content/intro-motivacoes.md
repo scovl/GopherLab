@@ -79,11 +79,9 @@ aplicacao:
 
 Você já tem milhares de linguagens para escolher. Por que gastar seu tempo com mais uma? Aqui vai a resposta curta: **Go foi feita para resolver problemas reais que outras linguagens populares não resolvem bem**.
 
-## O problema que deu origem ao Go
+## O trade-off que Go resolveu
 
-Imagine que você trabalha no Google em 2007. Seu projeto em C++ demora **45 minutos para compilar**. Cada vez que você muda uma linha de código, espera 45 minutos para ver se funcionou. Isso era o dia-a-dia de engenheiros como Rob Pike e Ken Thompson.
-
-Eles olharam para as alternativas e não ficaram satisfeitos:
+Cada linguagem popular resolvia bem um problema — mas criava outro. Go foi desenhada para pegar o melhor de cada uma:
 
 | Linguagem | Boa em... | Mas... |
 |---|---|---|
@@ -127,9 +125,9 @@ Você pode ter **milhares de goroutines** rodando ao mesmo tempo num programa Go
 
 Go tem apenas **25 palavras reservadas**. Para comparação:
 
-- Python: 35
-- Java: 50+
-- C++: 80+
+- [Python: 35](https://docs.python.org/3/reference/lexical_analysis.html#keywords)
+- [Java: 50+](https://docs.oracle.com/javase/tutorial/java/nutsandbolts/_keywords.html)
+- [C++: 80+](https://en.cppreference.com/w/cpp/keyword)
 
 Menos palavras = menos coisas para decorar = **mais rápido para ficar produtivo**.
 
@@ -139,14 +137,7 @@ Go limpa a memória que você não usa mais automaticamente (garbage collection)
 
 ## Quem usa Go no mundo real?
 
-Go não é uma linguagem acadêmica — ela roda infraestrutura que **bilhões de pessoas** usam todos os dias:
-
-- **Docker** — a plataforma de containers que revolucionou o deploy
-- **Kubernetes** — o orquestrador que roda os containers do mundo inteiro
-- **Terraform** — infraestrutura como código (usado por quase todo time de DevOps)
-- **Hugo** — um dos geradores de sites estáticos mais rápidos que existe
-
-No Brasil, empresas como **Mercado Livre**, **Magazine Luiza**, **Itaú**, **PagSeguro**, **ContaAzul** e **Jusbrasil** usam Go em produção.
+Como visto na lição anterior, Go é a linguagem por trás de Docker, Kubernetes, Terraform e Hugo. No Brasil, empresas como **Mercado Livre**, **Magazine Luiza**, **Itaú**, **PagSeguro**, **ContaAzul** e **Jusbrasil** usam Go em produção — especialmente em APIs, microsserviços e infraestrutura.
 
 ## Quando Go é a escolha certa?
 

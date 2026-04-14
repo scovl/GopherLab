@@ -84,10 +84,6 @@ experimentacao:
 
     **`t.Run` e subtests** — cada subtest é independente: pode ter seu próprio `t.Error`, `t.Fatal`, e `t.Parallel()`. `t.Run` retorna `bool` indicando se passou. Subtests aparecem hierarquicamente na saída com `-v`.
 
-    **`t.Errorf` vs `t.Fatalf`** — `Errorf` marca falha mas **continua** os próximos subtests; `Fatalf` **para** imediatamente. Use `Fatal` apenas quando continuar não faz sentido (ex: setup falhou, conexão impossível).
-
-    **`t.Helper()`** — em funções auxiliares (ex: `assertStatus(t, got, want)`), chame `t.Helper()` na primeira linha. Isso faz o reporter apontar para a **linha que chamou** o helper, não para dentro do helper. Sem `t.Helper()`, a mensagem de erro aponta para a linha errada.
-
     **`httptest.NewRecorder()`** — captura a response **sem abrir porta real**. `rec.Code` é o status HTTP, `rec.Body` é o body, `rec.Header()` os headers. Para testes de integração (com middleware, routing), use `httptest.NewServer(handler)` que abre porta real em localhost.
 
     **Cobertura** — `go test -cover` mostra porcentagem; `go test -coverprofile=c.out && go tool cover -html=c.out` abre visão interativa no browser. **80% com casos bem escolhidos vale mais que 100% com asserts triviais.**
@@ -182,6 +178,10 @@ func Soma(a, b int) int {
     return a + b
 }
 ```
+
+> **Pacote do teste: interno ou caixa-preta?**
+> `package calc` (mesmo pacote) — acessa funções e variáveis não-exportadas. Mais comum em testes unitários.
+> `package calc_test` (sufixo `_test`) — acessa apenas o que é exportado; testa como um usuário externo do pacote. Prefira quando quiser garantir que a API pública funciona.
 
 **Passo 2:** crie o teste (arquivo `soma_test.go`, **mesmo pacote**):
 
@@ -338,6 +338,25 @@ go test -run TestSoma
 go test -run TestSoma/negativos
 ```
 
+### Bônus: subtests paralelos com `t.Parallel()`
+
+Por padrão, subtests rodam em sequência. Se cada subtest é independente (sem estado compartilhado), você pode acelerá-los rodando em paralelo:
+
+```go
+for _, tc := range casos {
+    tc := tc // captura da variável de loop — obrigatório antes do Go 1.22!
+    t.Run(tc.nome, func(t *testing.T) {
+        t.Parallel() // ← sinaliza que este subtest pode rodar ao mesmo tempo que os outros
+        got := Soma(tc.a, tc.b)
+        if got != tc.esperado {
+            t.Errorf("Soma(%d, %d) = %d; esperava %d", tc.a, tc.b, got, tc.esperado)
+        }
+    })
+}
+```
+
+> **Atenção:** `tc := tc` faz uma cópia local da variável de loop. Sem ela (em Go < 1.22), todos os subtests capturam a *mesma* variável `tc` — quando finalmente rodam, `tc` já aponta para o último elemento do slice. Go 1.22+ corrigiu isso, mas você vai encontrar o padrão em codebases mais antigos.
+
 ---
 
 ## 4. `t.Helper()`: Funções Auxiliares Sem Confusão
@@ -421,6 +440,8 @@ O comando 3 abre uma página assim:
 ---
 
 ## 6. HTTP Testing: Testar APIs Sem Subir Servidor
+
+> **Pré-requisito:** esta seção assume que você conhece handlers HTTP (`http.ResponseWriter`, `*http.Request`). Se ainda não viu, revise a lição _Pacotes: HTTP e JSON_ do módulo Biblioteca Padrão antes de continuar.
 
 ### O problema
 
@@ -558,6 +579,7 @@ flowchart LR
 | `go test -coverprofile=c.out` | Gera arquivo de cobertura |
 | `go tool cover -html=c.out` | Abre cobertura visual no navegador |
 | `go test -count=1` | Ignora cache (sempre roda de verdade) |
+| `go test -short` | Pula testes marcados com `testing.Short()` (útil em CI) |
 
 ---
 

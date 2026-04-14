@@ -25,7 +25,7 @@ experimentacao:
 
     **`package main`** — todo programa Go pertence a um pacote. O pacote `main` é especial: indica que este arquivo é um **executável**, não uma biblioteca.
 
-    **`import "fmt"`** — importa o pacote `fmt` (format) da biblioteca padrão. Ele fornece funções para imprimir texto e formatar saída.
+    **`import "fmt"`** — importa o pacote `fmt` (format) da biblioteca padrão. Ele fornece funções para imprimir texto e formatar saída. Go é rigoroso aqui: se você importar um pacote e **não usar nada dele**, o compilador recusa compilar — nada de código morto.
 
     **`func main()`** — a função `main` é o **ponto de entrada** do programa. É a primeira coisa que o Go executa quando você roda `go run`.
 

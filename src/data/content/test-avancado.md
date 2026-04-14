@@ -127,7 +127,7 @@ experimentacao:
 
     **Mock manual via interface** — `mockRepo` implementa `UserRepo` com um `map` interno. Não precisa de framework: defina a interface, crie struct com os dados de teste, implemente os métodos. Go incentiva interfaces pequenas (1-3 métodos) — fáceis de mocar.
 
-    **`errors.Is(err, ErrNotFound)`** — no test de "user not found", verificamos que o erro **wrapped** (`"greet: not found"`) ainda contém o sentinela original. Sem wrapping com `%w`, isso falharia. Teste sempre a cadeia de erros, não a mensagem.
+    **`errors.Is(err, ErrNotFound)`** — no test de "user not found", verificamos que o erro **wrapped** (`"greet: not found"`) ainda contém o sentinela original. Sem wrapping com `%w`, isso falharia. Teste sempre a cadeia de erros, não a mensagem. (Revisão: `%w` e `errors.Is` foram vistos no módulo de Tratamento de Erros.)
 
     **Benchmark `b.N`** — o framework ajusta `b.N` automaticamente para obter medição estável. `go test -bench=. -benchmem -count=5` mostra ns/op, B/op e allocs/op. `-count=5` roda 5 vezes para detectar variação.
 
@@ -207,7 +207,7 @@ aplicacao:
 
 ---
 
-No módulo básico, você aprendeu a escrever testes simples com `TestXxx` e table-driven tests. Agora vamos aprender **3 técnicas avançadas** que todo projeto Go profissional usa:
+No módulo básico você viu `t.Run`, `t.Helper()`, cobertura, `httptest` e subtests paralelos com `t.Parallel()`. Agora vamos às **3 técnicas** que separam testes básicos de suites profissionais:
 
 1. **Mocking** — testar código que depende de banco/API **sem** banco/API
 2. **Benchmarks** — medir **exatamente** quão rápido seu código é
@@ -639,6 +639,39 @@ go tool pprof -http=:8081 cpu.out
 ```
 
 > **Dica:** rode profiling junto com benchmarks (`-bench=.`) para ter dados consistentes. Sem `-bench`, os testes são rápidos demais para coletar amostras significativas.
+
+---
+
+## `TestMain`: Setup e Teardown para o Pacote Inteiro
+
+Às vezes você precisa de um banco de dados de teste, arquivos temporários ou um servidor fake que precisam existir **antes de qualquer teste rodar** — e ser destruídos depois. Para isso existe `TestMain`:
+
+```go
+func TestMain(m *testing.M) {
+    // 1. Setup: roda ANTES de todos os testes do pacote
+    db = abrirBancoDeTeste()
+    defer db.Close()
+
+    // 2. m.Run() executa todos os TestXxx, BenchmarkXxx e FuzzXxx
+    codigo := m.Run()
+
+    // 3. Teardown: roda DEPOIS de todos os testes
+    limparBancoDeTeste(db)
+
+    // 4. Encerra com o código de saída correto (0 = passou, 1 = falhou)
+    os.Exit(codigo)
+}
+```
+
+> **Importante:** se você define `TestMain`, precisa chamar `m.Run()` — caso contrário, nenhum teste roda. E `os.Exit(m.Run())` deve ser a última linha, pois `os.Exit` não executa defers.
+
+| Sem `TestMain` | Com `TestMain` |
+|---|---|
+| Cada `TestXxx` abre e fecha sua própria conexão | Uma conexão compartilhada — muito mais rápido |
+| Não há teardown garantido para o pacote | `defer` ou código após `m.Run()` garante limpeza |
+| Simples, ideal para unitários | Necessário para testes de integração |
+
+Você vai usar `TestMain` principalmente quando o módulo de Banco de Dados for integrado em testes — mas o padrão é o mesmo: abrir recurso, `m.Run()`, fechar recurso, `os.Exit`.
 
 ---
 

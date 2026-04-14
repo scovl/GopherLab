@@ -2,17 +2,6 @@
 title: gRPC e Protocol Buffers
 description: Comunicação entre serviços com gRPC, protobuf e streaming.
 estimatedMinutes: 50
-
-  service UserService {
-    rpc GetUser(GetUserRequest) returns (User);
-    rpc ListUsers(ListRequest) returns (stream User);
-  }
-
-  message GetUserRequest { string id = 1; }
-  message User { string id = 1; string name = 2; string email = 3; }
-  message ListRequest { int32 limit = 1; }
-
-  // protoc --go_out=. --go-grpc_out=. user.proto
 recursos:
   - https://grpc.io/docs/languages/go/
   - https://protobuf.dev/
@@ -378,6 +367,10 @@ func main() {
         },
     })
 
+    // Habilita reflection — necessário para grpcurl e Evans
+    // Import: "google.golang.org/grpc/reflection"
+    reflection.Register(s)
+
     fmt.Println("gRPC server em :50051")
     log.Fatal(s.Serve(lis))
 }
@@ -387,8 +380,10 @@ func main() {
 
 ```go
 func main() {
-    // Conecta ao servidor
-    conn, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
+    // Conecta ao servidor (insecure apenas para dev/localhost)
+    // Import: "google.golang.org/grpc/credentials/insecure"
+    conn, err := grpc.NewClient("localhost:50051",
+        grpc.WithTransportCredentials(insecure.NewCredentials()))
     if err != nil {
         log.Fatal(err)
     }
@@ -455,7 +450,7 @@ grpcurl -plaintext -d '{"id": "1"}' localhost:50051 user.UserService/GetUser
 ```
 1. Escreva o .proto          → define o contrato (messages + services)
 2. Rode protoc               → gera código Go automaticamente
-3. Implemente os resolvers   → a lógica de negócio
+3. Implemente os métodos do serviço   → a lógica de negócio
 4. Suba o server             → net.Listen + grpc.NewServer
 5. Use o client gerado       → client.GetUser(ctx, req) — como função local
 ```

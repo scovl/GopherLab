@@ -628,3 +628,32 @@ Cada handler: func(w http.ResponseWriter, r *http.Request)
 | Status code diferente de 200 | `w.WriteHeader(http.StatusCreated)` |
 | Código antes de todo handler | Middleware: `func(next http.Handler) http.Handler` |
 | Compartilhar DB entre handlers | Handler struct com métodos |
+| Testar handler sem subir servidor | `httptest.NewRecorder()` + `mux.ServeHTTP(rec, req)` |
+
+---
+
+## Testando a API com `httptest`
+
+Handlers Go são funções puras — você pode chamá-los diretamente em testes sem abrir porta:
+
+```go
+func TestListarLivros(t *testing.T) {
+    api := &LivroAPI{livros: map[string]Livro{
+        "1": {ID: "1", Titulo: "Go em Ação"},
+    }}
+    mux := api.Routes() // o mesmo mux que main() usa
+
+    req := httptest.NewRequest("GET", "/api/livros", nil)
+    rec := httptest.NewRecorder()
+    mux.ServeHTTP(rec, req)
+
+    if rec.Code != http.StatusOK {
+        t.Errorf("Status = %d; esperava 200", rec.Code)
+    }
+    if ct := rec.Header().Get("Content-Type"); ct != "application/json" {
+        t.Errorf("Content-Type = %q; esperava application/json", ct)
+    }
+}
+```
+
+> **Lembre-se:** `httptest` foi visto no módulo de Testes. Aqui o diferencial é passar o `mux` inteiro para `ServeHTTP` — assim o teste cobre routing + handler ao mesmo tempo.

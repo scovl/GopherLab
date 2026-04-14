@@ -7,7 +7,7 @@ recursos:
   - https://github.com/gin-gonic/gin
   - https://github.com/labstack/echo
 experimentacao:
-  desafio: Migre a API CRUD da lição anterior para Chi e depois para Gin. Compare linhas de código, middleware e developer experience.
+  desafio: Migre a API CRUD da lição anterior para **Chi**. Adicione logging, recover e CORS com os middlewares embutidos. Se quiser ir além, repita o exercício com Gin e compare a quantidade de código.
   dicas:
     - "Chi: chi.URLParam(r, \"id\") para path params"
     - "Gin: c.Param(\"id\"), c.ShouldBindJSON(&input)"
@@ -351,48 +351,34 @@ func getUser(c *gin.Context) {
 
 ## Echo — familiar para quem vem de Node.js
 
-Se você já usou **Express.js** (Node), Echo vai parecer familiar:
+Echo usa `echo.Context` similar ao Gin, e a API lembra Express.js. É menos popular que Gin mas tem uma comunidade fiel:
 
 ```go
 e := echo.New()
 e.Use(middleware.Logger())
-
 e.GET("/users/:id", func(c echo.Context) error {
-    id := c.Param("id")
-    return c.JSON(200, map[string]string{"id": id})
+    return c.JSON(200, map[string]string{"id": c.Param("id")})
 })
-
 e.Start(":8080")
 ```
 
-Echo tem `echo.Context` (como Gin), binding integrado, e uma API limpa. É menos popular que Gin mas tem fãs fiéis.
+Se você tem experiência com Express.js e prefere a DX dele, Echo é uma boa opção. Para projetos novos sem esse histórico, Gin ou Chi são mais comuns no mercado.
 
 ---
 
 ## Fiber — o mais rápido (mas com custo)
 
-Fiber usa **fasthttp** (não `net/http`), o que o torna o mais rápido em benchmarks:
+Fiber usa **fasthttp** (não `net/http`), o que o torna o mais rápido em benchmarks. A API lembra Express:
 
 ```go
 app := fiber.New()
-
 app.Get("/users/:id", func(c *fiber.Ctx) error {
-    id := c.Params("id")
-    return c.JSON(fiber.Map{"id": id})
+    return c.JSON(fiber.Map{"id": c.Params("id")})
 })
-
 app.Listen(":8080")
 ```
 
-### ⚠️ O custo: incompatibilidade total
-
-```go
-// ❌ Middlewares de net/http NÃO funcionam com Fiber
-// ❌ Bibliotecas que esperam http.Handler NÃO funcionam
-// ❌ Migrar para outro framework exige reescrever tudo
-```
-
-> **Use Fiber apenas se:** throughput extremo é sua prioridade E você aceita ficar preso ao ecossistema Fiber.
+**Mas**: middlewares `net/http` não funcionam com Fiber, e qualquer biblioteca que espera `http.Handler` também não. Migrar para outro framework no futuro exige reescrever tudo. Use Fiber apenas se throughput extremo for a prioridade absoluta e você aceitar ficar preso ao ecossistema Fiber.
 
 ---
 
@@ -447,3 +433,28 @@ Preciso de framework? (stdlib Go 1.22+ já tem rotas e params)
 | Performance extrema (benchmarks) | **Fiber** |
 | Projeto simples sem dependências | **stdlib** (`net/http`) |
 | Migrar facilmente entre frameworks | **Chi** (handlers são stdlib) |
+
+## CORS e rate limiting
+
+Dois middlewares que aparecem em quase toda API em produção estão embutidos no Chi:
+
+```go
+import (
+    "github.com/go-chi/chi/v5/middleware"
+    "github.com/go-chi/cors"
+)
+
+r := chi.NewRouter()
+
+// CORS — permite que navegadores em outros domínios chamem a API
+r.Use(cors.Handler(cors.Options{
+    AllowedOrigins: []string{"https://meuapp.com"},
+    AllowedMethods: []string{"GET", "POST", "PUT", "DELETE"},
+    AllowedHeaders: []string{"Authorization", "Content-Type"},
+}))
+
+// Rate limiting — limita N requests por segundo por IP
+r.Use(middleware.Throttle(100)) // 100 requests/s máximo
+```
+
+No Gin, o equivalente são os pacotes `github.com/gin-contrib/cors` (CORS) e `golang.org/x/time/rate` para rate limiting manual, ou bibliotecas como `ulule/limiter`.

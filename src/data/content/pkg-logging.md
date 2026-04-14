@@ -302,6 +302,38 @@ log.Info().
 
 ---
 
+## Integrando slog num servidor HTTP
+
+Lembra do middleware de logging da lição anterior? Aqui está ele modernizado com `slog`:
+
+```go
+func logMiddleware(logger *slog.Logger, next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        start := time.Now()
+        next.ServeHTTP(w, r)
+        logger.Info("request",
+            slog.String("method", r.Method),
+            slog.String("path", r.URL.Path),
+            slog.Duration("duration", time.Since(start)),
+        )
+    })
+}
+```
+
+Com `log.Printf`, um log ficaria:
+```
+2024/01/15 10:30:00 GET /api/users 1.234ms
+```
+
+Com `slog.Info`, fica JSON pesquisável:
+```json
+{"time":"2024-01-15T10:30:00Z","level":"INFO","msg":"request","method":"GET","path":"/api/users","duration":"1.234ms"}
+```
+
+Agora você pode filtrar no Grafana Loki ou Datadog por `method=POST`, por `path=/api/users`, ou alertar quando `duration > 2s` — impossível com texto puro.
+
+---
+
 ## Erros comuns de iniciantes
 
 ### 1. Logar a senha do usuário

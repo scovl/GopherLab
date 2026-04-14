@@ -167,7 +167,7 @@ aplicacao:
 
 ## O problema: e quando dá VÁRIOS erros de uma vez?
 
-Na aula anterior, vimos como tratar **um** erro por vez. Mas e se você precisa processar **100 linhas de um CSV** e 5 delas têm erro?
+Na aula anterior, vimos como tratar erros individuais — cada operação retorna um `error` e você decide o que fazer. Também vimos como embrulhar dois erros fixos inline com `fmt.Errorf("%w e %w", err1, err2)`. Mas e se você precisa processar **100 linhas de um CSV** e 5 delas têm erro?
 
 ```go
 // ❌ Abordagem ingênua: para no primeiro erro
@@ -322,6 +322,8 @@ O que acontece internamente:
 
 ### `defer` ainda roda durante panic!
 
+> Lembre-se: `defer` (visto em Fundamentos — Funções) agenda a execução de uma função para quando a função atual retornar — e isso inclui saídas abruptas via `panic`.
+
 ```go
 func main() {
     defer fmt.Println("3 - defer executa!")  // ✅ roda mesmo com panic
@@ -394,27 +396,35 @@ func correto() {
 
 ---
 
-## Uso real: protegendo um servidor HTTP
+## Uso real: protegendo código que pode panic
 
-Se um handler de HTTP faz `panic`, **o servidor inteiro morre**. A solução é um middleware de recover:
+O padrão mais comum é envolver chamadas arriscadas num `safeCall`:
 
 ```go
-func recoverMiddleware(next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        defer func() {
-            if rec := recover(); rec != nil {
-                // Loga o erro (em produção, use slog)
-                log.Printf("PANIC em %s: %v", r.URL.Path, rec)
-                // Retorna 500 para o cliente
-                http.Error(w, "Erro interno", http.StatusInternalServerError)
-            }
-        }()
-        next.ServeHTTP(w, r)  // chama o handler real
+func safeCall(fn func()) (panickMsg string, ocorreuPanic bool) {
+    defer func() {
+        if r := recover(); r != nil {
+            panickMsg = fmt.Sprintf("%v", r)
+            ocorreuPanic = true
+        }
+    }()
+    fn()
+    return "", false
+}
+
+func main() {
+    msg, ok := safeCall(func() {
+        var s []int
+        _ = s[0]  // index fora do range → panic
     })
+    if ok {
+        fmt.Println("Capturado:", msg)
+        // Capturado: runtime error: index out of range [0] with length 0
+    }
 }
 ```
 
-> **Traduzindo:** cada request roda com um "paraquedas" (recover). Se o handler explodir, o paraquedas abre, o cliente recebe 500, e o servidor **continua vivo** para atender outros requests.
+> **Em servidores HTTP**, cada handler usa exatamente esse padrão como middleware — se um handler explodir (panic), o paraquedas (recover) garante que o servidor continue vivo para outros requests. Isso será visto na aula de `net/http` do módulo Biblioteca Padrão.
 
 ---
 

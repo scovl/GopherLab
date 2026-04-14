@@ -147,6 +147,8 @@ Vamos destrinchar:
 
 ### Usando o context numa operação
 
+> **Nota:** o exemplo abaixo usa `select` com channels — um recurso do módulo de Concorrência. Se ainda não chegou lá, leia apenas a ideia geral: "espere o que acontecer primeiro — a operação terminar ou o timeout expirar". A mecânica de channels você aprende depois.
+
 ```go
 func buscarDado(ctx context.Context) (string, error) {
     select {

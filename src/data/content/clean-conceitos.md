@@ -47,6 +47,8 @@ aplicacao:
 
 ## O problema: código espaguete
 
+> Se você fez o módulo de SOLID, já conhece o SRP, OCP e DIP. Clean Architecture é SOLID aplicado em escala de projeto — os mesmos princípios, agora com uma **convenção de pastas** que toda a equipe pode seguir. Você vai reconhecer cada parte.
+
 Quando o projeto é pequeno, tudo num arquivo funciona. Mas conforme cresce:
 
 ```go
@@ -165,7 +167,10 @@ meu-projeto/
 
 package entity
 
-import "time"
+import (
+    "errors"
+    "time"
+)
 
 type Order struct {
     ID        string
@@ -203,7 +208,9 @@ package usecase
 
 import (
     "context"
+    "fmt"
     "meu-projeto/internal/entity"
+    "time"
 )
 
 // A interface que o Use Case PRECISA (não a implementação!)
@@ -223,7 +230,7 @@ func NewCreateOrder(repo OrderRepository) *CreateOrder {
 func (uc *CreateOrder) Execute(ctx context.Context, product string, qty int, price float64) (*entity.Order, error) {
     // 1. Cria a entity
     order := &entity.Order{
-        ID:       generateID(),
+        ID:       fmt.Sprintf("%d", time.Now().UnixNano()), // produção: use github.com/google/uuid
         Product:  product,
         Quantity: qty,
         Price:    price,
@@ -254,22 +261,24 @@ package repository
 
 import (
     "context"
+    "database/sql"
     "meu-projeto/internal/entity"
-
-    "github.com/jackc/pgx/v5/pgxpool"
+    "meu-projeto/internal/usecase"
 )
 
+// *sql.DB: o mesmo driver visto no módulo de Banco de Dados
 type pgOrderRepo struct {
-    db *pgxpool.Pool
+    db *sql.DB
 }
 
-func NewPgOrderRepo(db *pgxpool.Pool) *pgOrderRepo {
+// Retorna a interface — o chamador depende do contrato, não do PostgreSQL
+func NewPgOrderRepo(db *sql.DB) usecase.OrderRepository {
     return &pgOrderRepo{db: db}
 }
 
 // Implementa usecase.OrderRepository automaticamente (interface implícita!)
 func (r *pgOrderRepo) Save(ctx context.Context, o *entity.Order) error {
-    _, err := r.db.Exec(ctx,
+    _, err := r.db.ExecContext(ctx,
         "INSERT INTO orders (id, product, quantity, price) VALUES ($1, $2, $3, $4)",
         o.ID, o.Product, o.Quantity, o.Price,
     )
@@ -315,7 +324,9 @@ func (h *OrderHandler) Create(w http.ResponseWriter, r *http.Request) {
 
     order, err := h.createOrder.Execute(r.Context(), req.Product, req.Quantity, req.Price)
     if err != nil {
-        http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusBadRequest)
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusBadRequest)
+        json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
         return
     }
 
@@ -333,8 +344,10 @@ func (h *OrderHandler) Create(w http.ResponseWriter, r *http.Request) {
 // cmd/server/main.go
 
 func main() {
-    // 1. Conecta ao banco (framework/driver)
-    db := conectarBanco()
+    // 1. Conecta ao banco (framework/driver) — mesmo padrão do módulo de Banco de Dados
+    // db, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
+    // if err != nil { log.Fatal(err) }
+    db := conectarBanco() // substitua pelo sql.Open do seu projeto
 
     // 2. Cria o repository (adapter)
     repo := repository.NewPgOrderRepo(db)
