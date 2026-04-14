@@ -77,9 +77,24 @@ git fetch upstream
 git rebase upstream/main
 ```
 
+## Código de conduta
+
+Todo projeto saudável tem regras de convivência explícitas. Antes de interagir — seja abrindo uma issue, comentando num PR ou participando de discussões — leia o `CODE_OF_CONDUCT.md` do projeto. Projetos relevantes seguem ou adaptam o [Contributor Covenant](https://www.contributor-covenant.org/).
+
+O que um bom código de conduta cobre:
+
+- **Respeito à diversidade** — gênero, raça, orientação sexual, deficiência, origem e nível de experiência
+- **Linguagem inclusiva** — sem piadas às custas de grupos minorizados, sem "banter" que exclui
+- **Crítica ao código, nunca à pessoa** — "essa função pode ser simplificada" vs. "quem escreveu isso não sabe programar"
+- **Espaço seguro para iniciantes** — pull requests de primeira viagem merecem feedback construtivo, não ridicularização
+- **Canal de reporte** — como e para quem reportar violações com confidencialidade
+
+Projetos sem código de conduta tendem a acumular barreiras invisíveis de entrada — especialmente para grupos sub-representados.
+
 ## Checklist antes de abrir o PR
 
 - [ ] Leu o `CONTRIBUTING.md` do projeto?
+- [ ] Leu o `CODE_OF_CONDUCT.md` do projeto?
 - [ ] Rodou `go test ./...`?
 - [ ] Rodou `go vet ./...` e `gofmt`?
 - [ ] A descrição do PR explica *por que*, não só *o que*?

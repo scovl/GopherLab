@@ -184,9 +184,16 @@ Inclua na issue: tela/URL, passos para reproduzir, comportamento esperado vs. at
 
 ---
 
+## Código de Conduta
+
+Este projeto adota um ambiente de respeito, diversidade e inclusão. Antes de contribuir, leia nosso [Código de Conduta](CODE_OF_CONDUCT.md). Ao participar, você concorda em respeitá-lo.
+
+---
+
 ## Recursos Úteis
 
 - [README.md](README.md) — Visão geral e como rodar
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) — Código de conduta da comunidade
 - [src/data/roadmap.ts](src/data/roadmap.ts) — Estrutura de conteúdo
 - [src/types/index.ts](src/types/index.ts) — Tipos do projeto
 - [runner/main.go](runner/main.go) — API de execução de código
