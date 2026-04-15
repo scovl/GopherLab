@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
     stop_grace_period: 5s
     container_name: gopherlab-runner
-    mem_limit: 512m
+    mem_limit: 768m
     cpus: '1.0'
     security_opt:
       - no-new-privileges:true
@@ -15,10 +15,10 @@ services:
     pids_limit: 256
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8081/health"]
-      interval: 5s
-      timeout: 3s
+      interval: 10s
+      timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 30s
     networks:
       - backend
 

@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	runTimeout    = 10 * time.Second
+	runTimeout    = 30 * time.Second
 	maxOutputSize = 64 * 1024
 	maxCodeSize   = 64 * 1024
 	maxConcurrent = 4

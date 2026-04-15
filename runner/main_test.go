@@ -356,3 +356,353 @@ func TestSandboxEnv(t *testing.T) {
 		}
 	}
 }
+
+// ==================== validateImports ====================
+
+func TestValidateImports_Allowed(t *testing.T) {
+	allowed := []string{
+		`package main; import "fmt"`,
+		`package main; import "strings"`,
+		`package main; import "math"`,
+		`package main; import ("fmt"; "sort")`,
+		`package main; import "os"`,
+		`package main; import "encoding/json"`,
+	}
+	for _, code := range allowed {
+		if err := validateImports(code); err != nil {
+			t.Errorf("validateImports(%q) = %v, want nil", code, err)
+		}
+	}
+}
+
+func TestValidateImports_Blocked(t *testing.T) {
+	blocked := []string{
+		`package main; import "os/exec"`,
+		`package main; import "syscall"`,
+		`package main; import "unsafe"`,
+		`package main; import "plugin"`,
+		`package main; import "runtime/cgo"`,
+		`package main; import "net"`,
+		`package main; import "net/http"`,
+		`package main; import "net/rpc"`,
+		`package main; import "net/smtp"`,
+		`package main; import "debug/elf"`,
+		`package main; import "debug/macho"`,
+		`package main; import "debug/pe"`,
+		`package main; import "crypto/x509"`,
+	}
+	for _, code := range blocked {
+		if err := validateImports(code); err == nil {
+			t.Errorf("validateImports(%q) = nil, want error", code)
+		}
+	}
+}
+
+func TestValidateImports_NetSubpackages(t *testing.T) {
+	code := `package main; import "net/url"`
+	if err := validateImports(code); err == nil {
+		t.Error("expected net/url to be blocked")
+	}
+}
+
+func TestValidateImports_MalformedCode(t *testing.T) {
+	if err := validateImports("this is not go code at all!!!"); err != nil {
+		t.Errorf("expected nil for unparseable code, got %v", err)
+	}
+}
+
+func TestValidateImports_MixedBlockedAllowed(t *testing.T) {
+	code := `package main
+import (
+	"fmt"
+	"os/exec"
+)`
+	if err := validateImports(code); err == nil {
+		t.Error("expected error when one blocked import is present among allowed ones")
+	}
+}
+
+// ==================== verifyPoW ====================
+
+func TestVerifyPoW_InvalidSolution(t *testing.T) {
+	if verifyPoW("testnonce", "wrong") {
+		t.Error("expected false for obviously wrong solution")
+	}
+}
+
+func TestVerifyPoW_EmptyInputs(t *testing.T) {
+	if verifyPoW("", "") {
+		t.Error("expected false for empty nonce and solution")
+	}
+}
+
+// ==================== generateChallenge ====================
+
+func TestGenerateChallenge_NonEmpty(t *testing.T) {
+	c := generateChallenge()
+	if c == "" {
+		t.Error("expected non-empty challenge nonce")
+	}
+	if len(c) != 32 {
+		t.Errorf("expected 32 hex chars, got %d: %q", len(c), c)
+	}
+}
+
+func TestGenerateChallenge_Unique(t *testing.T) {
+	a := generateChallenge()
+	b := generateChallenge()
+	if a == b {
+		t.Error("two consecutive challenges should differ")
+	}
+}
+
+// ==================== handleChallenge ====================
+
+func TestHandleChallenge_ReturnsNonceAndDifficulty(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/challenge", nil)
+	w := httptest.NewRecorder()
+	handleChallenge(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	if ct := w.Header().Get("Content-Type"); ct != "application/json" {
+		t.Errorf("expected application/json, got %q", ct)
+	}
+
+	var body map[string]interface{}
+	if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
+		t.Fatalf("decode challenge response: %v", err)
+	}
+	if body["nonce"] == nil || body["nonce"] == "" {
+		t.Error("expected non-empty nonce in response")
+	}
+	if diff, ok := body["difficulty"].(float64); !ok || int(diff) != powDifficulty {
+		t.Errorf("expected difficulty %d, got %v", powDifficulty, body["difficulty"])
+	}
+}
+
+func TestHandleChallenge_OPTIONS(t *testing.T) {
+	req := httptest.NewRequest(http.MethodOptions, "/challenge", nil)
+	w := httptest.NewRecorder()
+	handleChallenge(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200 for OPTIONS, got %d", w.Code)
+	}
+	if got := w.Header().Get("Access-Control-Allow-Origin"); got != "*" {
+		t.Errorf("expected CORS *, got %q", got)
+	}
+}
+
+func TestHandleChallenge_StoresNonce(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/challenge", nil)
+	w := httptest.NewRecorder()
+	handleChallenge(w, req)
+
+	var body map[string]interface{}
+	json.NewDecoder(w.Body).Decode(&body) //nolint:errcheck
+	nonce := body["nonce"].(string)
+
+	challengeMu.Lock()
+	_, exists := challengeStore[nonce]
+	challengeMu.Unlock()
+
+	if !exists {
+		t.Error("challenge nonce should be stored after generation")
+	}
+}
+
+// ==================== requirePoW ====================
+
+func TestRequirePoW_MissingHeaders(t *testing.T) {
+	handler := requirePoW(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	req := httptest.NewRequest(http.MethodPost, "/run", nil)
+	w := httptest.NewRecorder()
+	handler(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("expected 403, got %d", w.Code)
+	}
+	var resp runResponse
+	json.NewDecoder(w.Body).Decode(&resp) //nolint:errcheck
+	if !strings.Contains(resp.Errors, "ausente") {
+		t.Errorf("expected 'ausente' in error, got %q", resp.Errors)
+	}
+}
+
+func TestRequirePoW_InvalidNonce(t *testing.T) {
+	handler := requirePoW(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	req := httptest.NewRequest(http.MethodPost, "/run", nil)
+	req.Header.Set("X-PoW-Nonce", "nonexistent-nonce")
+	req.Header.Set("X-PoW-Solution", "anything")
+	w := httptest.NewRecorder()
+	handler(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("expected 403, got %d", w.Code)
+	}
+	var resp runResponse
+	json.NewDecoder(w.Body).Decode(&resp) //nolint:errcheck
+	if !strings.Contains(resp.Errors, "expirado") && !strings.Contains(resp.Errors, "inválido") {
+		t.Errorf("expected expiry/invalid error, got %q", resp.Errors)
+	}
+}
+
+func TestRequirePoW_WrongSolution(t *testing.T) {
+	chalReq := httptest.NewRequest(http.MethodGet, "/challenge", nil)
+	chalW := httptest.NewRecorder()
+	handleChallenge(chalW, chalReq)
+
+	var chalBody map[string]interface{}
+	json.NewDecoder(chalW.Body).Decode(&chalBody) //nolint:errcheck
+	nonce := chalBody["nonce"].(string)
+
+	handler := requirePoW(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	req := httptest.NewRequest(http.MethodPost, "/run", nil)
+	req.Header.Set("X-PoW-Nonce", nonce)
+	req.Header.Set("X-PoW-Solution", "definitely-wrong")
+	w := httptest.NewRecorder()
+	handler(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("expected 403, got %d", w.Code)
+	}
+	var resp runResponse
+	json.NewDecoder(w.Body).Decode(&resp) //nolint:errcheck
+	if !strings.Contains(resp.Errors, "inválida") {
+		t.Errorf("expected 'inválida' in error, got %q", resp.Errors)
+	}
+}
+
+func TestRequirePoW_OPTIONS_Passthrough(t *testing.T) {
+	handler := requirePoW(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	req := httptest.NewRequest(http.MethodOptions, "/run", nil)
+	w := httptest.NewRecorder()
+	handler(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200 for OPTIONS, got %d", w.Code)
+	}
+}
+
+func TestRequirePoW_NonceSingleUse(t *testing.T) {
+	chalReq := httptest.NewRequest(http.MethodGet, "/challenge", nil)
+	chalW := httptest.NewRecorder()
+	handleChallenge(chalW, chalReq)
+
+	var chalBody map[string]interface{}
+	json.NewDecoder(chalW.Body).Decode(&chalBody) //nolint:errcheck
+	nonce := chalBody["nonce"].(string)
+
+	handler := requirePoW(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	req1 := httptest.NewRequest(http.MethodPost, "/run", nil)
+	req1.Header.Set("X-PoW-Nonce", nonce)
+	req1.Header.Set("X-PoW-Solution", "wrong")
+	w1 := httptest.NewRecorder()
+	handler(w1, req1)
+
+	req2 := httptest.NewRequest(http.MethodPost, "/run", nil)
+	req2.Header.Set("X-PoW-Nonce", nonce)
+	req2.Header.Set("X-PoW-Solution", "wrong")
+	w2 := httptest.NewRecorder()
+	handler(w2, req2)
+
+	if w2.Code != http.StatusForbidden {
+		t.Errorf("expected 403 on nonce reuse, got %d", w2.Code)
+	}
+}
+
+// ==================== handleLab validation ====================
+
+func TestHandleLab_NonGoFile(t *testing.T) {
+	files := []labFile{
+		{Name: "readme.txt", Body: "hello"},
+	}
+	resp, _ := postLab(t, files, "run")
+	if !strings.Contains(resp.Errors, ".go") {
+		t.Errorf("expected error about .go files, got %q", resp.Errors)
+	}
+}
+
+func TestHandleLab_GoModForbidden(t *testing.T) {
+	files := []labFile{
+		{Name: "go.mod", Body: "module hack"},
+	}
+	resp, _ := postLab(t, files, "run")
+	if !strings.Contains(resp.Errors, "go.mod") {
+		t.Errorf("expected error about go.mod, got %q", resp.Errors)
+	}
+}
+
+func TestHandleLab_GoSumForbidden(t *testing.T) {
+	files := []labFile{
+		{Name: "go.sum", Body: "hash"},
+	}
+	resp, _ := postLab(t, files, "run")
+	if !strings.Contains(resp.Errors, "go.sum") {
+		t.Errorf("expected error about go.sum, got %q", resp.Errors)
+	}
+}
+
+func TestHandleLab_BlockedImport(t *testing.T) {
+	files := []labFile{
+		{Name: "main.go", Body: `package main
+import "os/exec"
+func main() {}`},
+	}
+	resp, _ := postLab(t, files, "run")
+	if !strings.Contains(resp.Errors, "não permitido") {
+		t.Errorf("expected blocked import error, got %q", resp.Errors)
+	}
+}
+
+func TestHandleLab_InvalidFileName(t *testing.T) {
+	for _, name := range []string{".", "..", ""} {
+		files := []labFile{
+			{Name: name, Body: `package main`},
+		}
+		resp, _ := postLab(t, files, "run")
+		if resp.Errors == "" {
+			t.Errorf("expected error for filename %q", name)
+		}
+	}
+}
+
+// ==================== handleRun extra validation ====================
+
+func TestHandleRun_BlockedImport(t *testing.T) {
+	const code = `package main
+import "os/exec"
+func main() {}`
+	resp, _ := postRun(t, code)
+	if !strings.Contains(resp.Errors, "não permitido") {
+		t.Errorf("expected blocked import error, got %q", resp.Errors)
+	}
+}
+
+// ==================== CORS on error responses ====================
+
+func TestHandleRun_CORSOnError(t *testing.T) {
+	resp, w := postRun(t, "")
+	_ = resp
+	if got := w.Header().Get("Access-Control-Allow-Origin"); got != "*" {
+		t.Errorf("expected CORS header even on error, got %q", got)
+	}
+}
+
+func TestHandleLab_CORSOnError(t *testing.T) {
+	resp, w := postLab(t, []labFile{}, "run")
+	_ = resp
+	if got := w.Header().Get("Access-Control-Allow-Origin"); got != "*" {
+		t.Errorf("expected CORS header even on error, got %q", got)
+	}
+}
