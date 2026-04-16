@@ -16,7 +16,7 @@ export function StickyNote({ id, text, note, onSave, onClose, onDelete, onPin }:
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const dragOffset = useRef({ x: 0, y: 0 });
-  const noteRef = useRef<HTMLDivElement>(null);
+  const noteRef = useRef<HTMLDialogElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Center on first mount
