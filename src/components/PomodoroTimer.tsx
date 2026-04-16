@@ -94,6 +94,7 @@ export function PomodoroTimer() {
     const innerR = isMajor ? 80 : 83;
     const rad = (angle - 90) * (Math.PI / 180);
     return {
+      angle,
       x1: 100 + outerR * Math.cos(rad),
       y1: 100 + outerR * Math.sin(rad),
       x2: 100 + innerR * Math.cos(rad),
@@ -121,9 +122,9 @@ export function PomodoroTimer() {
       <div className="pomodoro-ring-wrapper">
         <svg className="pomodoro-ring" viewBox="0 0 200 200" aria-hidden="true">
           {/* Tick marks */}
-          {ticks.map((t, i) => (
+          {ticks.map((t) => (
             <line
-              key={i}
+              key={`tick-${t.angle}`}
               x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2}
               className={t.major ? 'pomodoro-tick pomodoro-tick--major' : 'pomodoro-tick'}
             />
