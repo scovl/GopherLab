@@ -62,11 +62,11 @@ export function StickyNote({ id, text, note, onSave, onClose, onDelete, onPin }:
   const handleSave = () => onSave(id, value);
 
   return createPortal(
-    <div
+    <dialog
       ref={noteRef}
       className="sticky-note"
       style={{ left: pos.x, top: pos.y }}
-      role="dialog"
+      open
       aria-label="Nota pessoal"
       onMouseDown={handleMouseDown}
     >
@@ -111,7 +111,7 @@ export function StickyNote({ id, text, note, onSave, onClose, onDelete, onPin }:
         placeholder="Escreva sua nota aqui…"
         rows={4}
       />
-    </div>,
+    </dialog>,
     document.body
   );
 }
