@@ -88,7 +88,7 @@
 [data-theme="dark"] .playground-ref-header {
   background: rgba(255, 224, 130, 0.1);
   border-color: rgba(255, 224, 130, 0.3);
-  color: #ffe082;
+  color: #ffcc02;
 }
 
 /* Reference code â€” intentionally NOT selectable */
@@ -239,12 +239,12 @@
 
 [data-theme="dark"] .playground-output-ok .playground-output-label {
   background: rgba(46, 125, 50, 0.2);
-  color: #81c784;
+  color: #66bb6a;
 }
 
 [data-theme="dark"] .playground-output-error .playground-output-label {
   background: rgba(198, 40, 40, 0.2);
-  color: #ef9a9a;
+  color: #ef5350;
 }
 
 .playground-output-text {
