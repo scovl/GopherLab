@@ -41,14 +41,14 @@ export function LessonView({ lesson, module, onBack, onNavigate, onPinNote }: Re
             className="btn btn-ghost breadcrumb-module-btn"
             onClick={() => setShowLessons(v => !v)}
             aria-expanded={showLessons}
-            aria-haspopup="listbox"
+            aria-haspopup="menu"
           >
             {module.title} <span className="breadcrumb-chevron" aria-hidden="true">▾</span>
           </button>
           {showLessons && (
-            <ul className="breadcrumb-lesson-list" role="listbox" aria-label={`Aulas de ${module.title}`}>
+            <ul className="breadcrumb-lesson-list" role="menu" aria-label={`Aulas de ${module.title}`}>
               {module.lessons.map(l => (
-                <li key={l.id} role="option" aria-selected={l.id === lesson.id}>
+                <li key={l.id} role="menuitem" aria-current={l.id === lesson.id ? 'true' : undefined}>
                   <button
                     className={`breadcrumb-lesson-item${l.id === lesson.id ? ' active' : ''}`}
                     onClick={() => { onNavigate(l.id); setShowLessons(false); }}
