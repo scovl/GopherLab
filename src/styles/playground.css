@@ -138,7 +138,7 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0.4rem 0.9rem;
-  background: #00AD5F;
+  background: #007a44;
   color: #fff;
   border: none;
   border-radius: var(--radius-sm);
@@ -149,7 +149,7 @@
 }
 
 .btn-play:hover:not(:disabled) {
-  background: #009952;
+  background: #006636;
 }
 
 .btn-play:disabled {
@@ -158,7 +158,7 @@
 }
 
 .btn-play:focus-visible {
-  outline: 3px solid #00AD5F;
+  outline: 3px solid #007a44;
   outline-offset: 2px;
 }
 
@@ -334,7 +334,7 @@
 [data-theme="dark"] .nota-pos-titulo { color: #81c784; }
 [data-theme="dark"] .nota-pos-body code {
   background: rgba(67, 160, 71, 0.15);
-  color: #a5d6a7;
+  color: #c8e6c9;
 }
 
 /* --- GitHub Section --- */

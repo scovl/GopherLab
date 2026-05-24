@@ -17,7 +17,10 @@ export function LessonView({ lesson, module, onBack, onNavigate, onPinNote }: Re
   const next = getNextLesson(lesson.id);
   const prev = getPrevLesson(lesson.id);
   const [showLessons, setShowLessons] = useState(false);
+  const [focusIndex, setFocusIndex] = useState(-1);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -29,6 +32,70 @@ export function LessonView({ lesson, module, onBack, onNavigate, onPinNote }: Re
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  useEffect(() => {
+    if (!showLessons) {
+      setFocusIndex(-1);
+    }
+  }, [showLessons]);
+
+  useEffect(() => {
+    const item = itemRefs.current[focusIndex];
+    if (item) {
+      const btn = item.querySelector('button') as HTMLButtonElement | null;
+      btn?.focus();
+    }
+  }, [focusIndex]);
+
+  const handleToggleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!showLessons) {
+        setShowLessons(true);
+        setFocusIndex(e.key === 'ArrowDown' ? 0 : module.lessons.length - 1);
+      }
+    } else if (e.key === 'Escape' && showLessons) {
+      e.preventDefault();
+      setShowLessons(false);
+      toggleRef.current?.focus();
+    }
+  };
+
+  const handleMenuKeyDown = (e: React.KeyboardEvent) => {
+    const len = module.lessons.length;
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setFocusIndex(prev => (prev + 1) % len);
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setFocusIndex(prev => (prev <= 0 ? len - 1 : prev - 1));
+        break;
+      case 'Home':
+        e.preventDefault();
+        setFocusIndex(0);
+        break;
+      case 'End':
+        e.preventDefault();
+        setFocusIndex(len - 1);
+        break;
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        if (focusIndex >= 0 && focusIndex < len) {
+          onNavigate(module.lessons[focusIndex].id);
+          setShowLessons(false);
+          toggleRef.current?.focus();
+        }
+        break;
+      case 'Escape':
+        e.preventDefault();
+        setShowLessons(false);
+        toggleRef.current?.focus();
+        break;
+    }
+  };
+
   return (
     <article className="lesson-view" aria-label={`Aula: ${lesson.title}`}>
       <nav className="lesson-breadcrumb" aria-label="Navegação do conteúdo">
@@ -38,20 +105,24 @@ export function LessonView({ lesson, module, onBack, onNavigate, onPinNote }: Re
         <span aria-hidden="true">/</span>
         <div className="breadcrumb-dropdown" ref={dropdownRef}>
           <button
+            ref={toggleRef}
             className="btn btn-ghost breadcrumb-module-btn"
             onClick={() => setShowLessons(v => !v)}
+            onKeyDown={handleToggleKeyDown}
             aria-expanded={showLessons}
-            aria-haspopup="listbox"
+            aria-haspopup="menu"
+            aria-controls="breadcrumb-menu"
           >
             {module.title} <span className="breadcrumb-chevron" aria-hidden="true">▾</span>
           </button>
           {showLessons && (
-            <ul className="breadcrumb-lesson-list" role="listbox" aria-label={`Aulas de ${module.title}`}>
-              {module.lessons.map(l => (
-                <li key={l.id} role="option" aria-selected={l.id === lesson.id}>
+            <ul id="breadcrumb-menu" className="breadcrumb-lesson-list" role="menu" aria-label={`Aulas de ${module.title}`} onKeyDown={handleMenuKeyDown}>
+              {module.lessons.map((l, i) => (
+                <li key={l.id} role="menuitem" aria-current={l.id === lesson.id ? 'page' : undefined} ref={el => { itemRefs.current[i] = el; }}>
                   <button
                     className={`breadcrumb-lesson-item${l.id === lesson.id ? ' active' : ''}`}
                     onClick={() => { onNavigate(l.id); setShowLessons(false); }}
+                    tabIndex={-1}
                   >
                     {l.title}
                   </button>
