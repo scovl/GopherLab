@@ -32,6 +32,7 @@ func postRun(t *testing.T, code string) (runResponse, *httptest.ResponseRecorder
 // --- HTTP method & CORS ---
 
 func TestHandleRun_MethodNotAllowed(t *testing.T) {
+	t.Parallel()
 	for _, method := range []string{http.MethodGet, http.MethodPut, http.MethodDelete, http.MethodPatch} {
 		req := httptest.NewRequest(method, "/run", nil)
 		w := httptest.NewRecorder()
@@ -48,6 +49,7 @@ func TestHandleRun_MethodNotAllowed(t *testing.T) {
 }
 
 func TestHandleRun_OPTIONS_CORS(t *testing.T) {
+	t.Parallel()
 	req := httptest.NewRequest(http.MethodOptions, "/run", nil)
 	w := httptest.NewRecorder()
 	handleRun(w, req)
@@ -136,6 +138,7 @@ func main() { fmt.Println(add(2, 3)) }`
 // --- Output truncation (unit) ---
 
 func TestOutputTruncation(t *testing.T) {
+	t.Parallel()
 	large := strings.Repeat("a", maxOutputSize+200)
 	if len(large) > maxOutputSize {
 		large = large[:maxOutputSize] + "\n... [saída truncada]"
@@ -151,6 +154,7 @@ func TestOutputTruncation(t *testing.T) {
 // --- Health endpoint ---
 
 func TestHealthEndpoint(t *testing.T) {
+	t.Parallel()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "ok")
@@ -186,6 +190,7 @@ func postLab(t *testing.T, files []labFile, mode string) (runResponse, *httptest
 }
 
 func TestHandleLab_MethodNotAllowed(t *testing.T) {
+	t.Parallel()
 	for _, method := range []string{http.MethodGet, http.MethodPut, http.MethodDelete} {
 		req := httptest.NewRequest(method, "/lab", nil)
 		w := httptest.NewRecorder()
@@ -197,6 +202,7 @@ func TestHandleLab_MethodNotAllowed(t *testing.T) {
 }
 
 func TestHandleLab_OPTIONS_CORS(t *testing.T) {
+	t.Parallel()
 	req := httptest.NewRequest(http.MethodOptions, "/lab", nil)
 	w := httptest.NewRecorder()
 	handleLab(w, req)
@@ -209,6 +215,7 @@ func TestHandleLab_OPTIONS_CORS(t *testing.T) {
 }
 
 func TestHandleLab_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	req := httptest.NewRequest(http.MethodPost, "/lab", strings.NewReader("{bad"))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -332,6 +339,7 @@ func TestHandleLab_PathTraversal(t *testing.T) {
 // --- Constants ---
 
 func TestGoModContent(t *testing.T) {
+	t.Parallel()
 	if !strings.Contains(goModContent, "module sandbox") {
 		t.Error("goModContent should declare module sandbox")
 	}
@@ -341,6 +349,7 @@ func TestGoModContent(t *testing.T) {
 }
 
 func TestSandboxEnv(t *testing.T) {
+	t.Parallel()
 	env := sandboxEnv()
 	required := []string{"HOME=", "PATH=", "GOROOT=", "GOPATH=", "GOCACHE=", "GOTMPDIR=", "GOPROXY=", "GONOSUMDB="}
 	for _, prefix := range required {
@@ -360,6 +369,7 @@ func TestSandboxEnv(t *testing.T) {
 // ==================== validateImports ====================
 
 func TestValidateImports_Allowed(t *testing.T) {
+	t.Parallel()
 	allowed := []string{
 		`package main; import "fmt"`,
 		`package main; import "strings"`,
@@ -376,6 +386,7 @@ func TestValidateImports_Allowed(t *testing.T) {
 }
 
 func TestValidateImports_Blocked(t *testing.T) {
+	t.Parallel()
 	blocked := []string{
 		`package main; import "os/exec"`,
 		`package main; import "syscall"`,
@@ -399,6 +410,7 @@ func TestValidateImports_Blocked(t *testing.T) {
 }
 
 func TestValidateImports_NetSubpackages(t *testing.T) {
+	t.Parallel()
 	code := `package main; import "net/url"`
 	if err := validateImports(code); err == nil {
 		t.Error("expected net/url to be blocked")
@@ -406,12 +418,14 @@ func TestValidateImports_NetSubpackages(t *testing.T) {
 }
 
 func TestValidateImports_MalformedCode(t *testing.T) {
+	t.Parallel()
 	if err := validateImports("this is not go code at all!!!"); err != nil {
 		t.Errorf("expected nil for unparseable code, got %v", err)
 	}
 }
 
 func TestValidateImports_MixedBlockedAllowed(t *testing.T) {
+	t.Parallel()
 	code := `package main
 import (
 	"fmt"
@@ -425,12 +439,14 @@ import (
 // ==================== verifyPoW ====================
 
 func TestVerifyPoW_InvalidSolution(t *testing.T) {
+	t.Parallel()
 	if verifyPoW("testnonce", "wrong") {
 		t.Error("expected false for obviously wrong solution")
 	}
 }
 
 func TestVerifyPoW_EmptyInputs(t *testing.T) {
+	t.Parallel()
 	if verifyPoW("", "") {
 		t.Error("expected false for empty nonce and solution")
 	}
@@ -439,6 +455,7 @@ func TestVerifyPoW_EmptyInputs(t *testing.T) {
 // ==================== generateChallenge ====================
 
 func TestGenerateChallenge_NonEmpty(t *testing.T) {
+	t.Parallel()
 	c := generateChallenge()
 	if c == "" {
 		t.Error("expected non-empty challenge nonce")
@@ -449,6 +466,7 @@ func TestGenerateChallenge_NonEmpty(t *testing.T) {
 }
 
 func TestGenerateChallenge_Unique(t *testing.T) {
+	t.Parallel()
 	a := generateChallenge()
 	b := generateChallenge()
 	if a == b {
@@ -459,6 +477,7 @@ func TestGenerateChallenge_Unique(t *testing.T) {
 // ==================== handleChallenge ====================
 
 func TestHandleChallenge_ReturnsNonceAndDifficulty(t *testing.T) {
+	t.Parallel()
 	req := httptest.NewRequest(http.MethodGet, "/challenge", nil)
 	w := httptest.NewRecorder()
 	handleChallenge(w, req)
@@ -483,6 +502,7 @@ func TestHandleChallenge_ReturnsNonceAndDifficulty(t *testing.T) {
 }
 
 func TestHandleChallenge_OPTIONS(t *testing.T) {
+	t.Parallel()
 	req := httptest.NewRequest(http.MethodOptions, "/challenge", nil)
 	w := httptest.NewRecorder()
 	handleChallenge(w, req)
@@ -495,6 +515,7 @@ func TestHandleChallenge_OPTIONS(t *testing.T) {
 }
 
 func TestHandleChallenge_StoresNonce(t *testing.T) {
+	t.Parallel()
 	req := httptest.NewRequest(http.MethodGet, "/challenge", nil)
 	w := httptest.NewRecorder()
 	handleChallenge(w, req)
@@ -515,6 +536,7 @@ func TestHandleChallenge_StoresNonce(t *testing.T) {
 // ==================== requirePoW ====================
 
 func TestRequirePoW_MissingHeaders(t *testing.T) {
+	t.Parallel()
 	handler := requirePoW(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
@@ -533,6 +555,7 @@ func TestRequirePoW_MissingHeaders(t *testing.T) {
 }
 
 func TestRequirePoW_InvalidNonce(t *testing.T) {
+	t.Parallel()
 	handler := requirePoW(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
@@ -581,6 +604,7 @@ func TestRequirePoW_WrongSolution(t *testing.T) {
 }
 
 func TestRequirePoW_OPTIONS_Passthrough(t *testing.T) {
+	t.Parallel()
 	handler := requirePoW(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
@@ -704,5 +728,56 @@ func TestHandleLab_CORSOnError(t *testing.T) {
 	_ = resp
 	if got := w.Header().Get("Access-Control-Allow-Origin"); got != "*" {
 		t.Errorf("expected CORS header even on error, got %q", got)
+	}
+}
+
+// ==================== Fuzz tests ====================
+
+func FuzzVerifyPoW(f *testing.F) {
+	f.Add("testnonce", "wrong")
+	f.Add("", "")
+	f.Add("abc123", "solution")
+	f.Fuzz(func(t *testing.T, nonce, solution string) {
+		verifyPoW(nonce, solution)
+	})
+}
+
+func FuzzValidateImports(f *testing.F) {
+	f.Add(`package main; import "fmt"`)
+	f.Add(`package main; import "os/exec"`)
+	f.Add(`package main; import "net/http"`)
+	f.Add(`not go code at all!!!`)
+	f.Fuzz(func(t *testing.T, code string) {
+		validateImports(code)
+	})
+}
+
+// ==================== Benchmarks ====================
+
+func BenchmarkVerifyPoW(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		verifyPoW("testnonce", "wrong")
+	}
+}
+
+func BenchmarkValidateImports(b *testing.B) {
+	code := `package main
+import (
+	"fmt"
+	"strings"
+	"os/exec"
+)
+func main() {}`
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		validateImports(code)
+	}
+}
+
+func BenchmarkGenerateChallenge(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		generateChallenge()
 	}
 }
