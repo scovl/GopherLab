@@ -30,6 +30,23 @@ const (
 	goModContent  = "module sandbox\n\ngo 1.23\n"
 )
 
+func writeJSON(w http.ResponseWriter, status int, v interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		log.Printf("json encode: %v", err)
+	}
+}
+
+func writeJSONWithCORS(w http.ResponseWriter, status int, v interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		log.Printf("json encode: %v", err)
+	}
+}
+
 var sem = make(chan struct{}, maxConcurrent)
 
 // sandboxBaseDir is the parent for sandbox execution directories.
@@ -87,7 +104,7 @@ func handleChallenge(w http.ResponseWriter, r *http.Request) {
 	challengeStore[nonce] = challenge{nonce: nonce, createdAt: now}
 	challengeMu.Unlock()
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	writeJSONWithCORS(w, http.StatusOK, map[string]interface{}{
 		"nonce":      nonce,
 		"difficulty": powDifficulty,
 	})
@@ -126,8 +143,7 @@ func requirePoW(next http.HandlerFunc) http.HandlerFunc {
 		solution := r.Header.Get("X-PoW-Solution")
 
 		if nonce == "" || solution == "" {
-			w.WriteHeader(http.StatusForbidden)
-			json.NewEncoder(w).Encode(runResponse{Errors: "prova de trabalho ausente"})
+			writeJSONWithCORS(w, http.StatusForbidden, runResponse{Errors: "prova de trabalho ausente"})
 			return
 		}
 
@@ -139,14 +155,12 @@ func requirePoW(next http.HandlerFunc) http.HandlerFunc {
 		challengeMu.Unlock()
 
 		if !exists || time.Since(ch.createdAt) > challengeTTL {
-			w.WriteHeader(http.StatusForbidden)
-			json.NewEncoder(w).Encode(runResponse{Errors: "desafio expirado ou inválido"})
+			writeJSONWithCORS(w, http.StatusForbidden, runResponse{Errors: "desafio expirado ou inválido"})
 			return
 		}
 
 		if !verifyPoW(nonce, solution) {
-			w.WriteHeader(http.StatusForbidden)
-			json.NewEncoder(w).Encode(runResponse{Errors: "prova de trabalho inválida"})
+			writeJSONWithCORS(w, http.StatusForbidden, runResponse{Errors: "prova de trabalho inválida"})
 			return
 		}
 
@@ -156,20 +170,20 @@ func requirePoW(next http.HandlerFunc) http.HandlerFunc {
 
 // ── Import validation ──────────────────────────────────────────────────
 
-var blockedImports = map[string]bool{
-	"os/exec":     true,
-	"syscall":     true,
-	"unsafe":      true,
-	"plugin":      true,
-	"runtime/cgo": true,
-	"net":         true,
-	"net/http":    true,
-	"net/rpc":     true,
-	"net/smtp":    true,
-	"debug/elf":   true,
-	"debug/macho": true,
-	"debug/pe":    true,
-	"crypto/x509": true,
+var blockedImports = map[string]struct{}{
+	"os/exec":     {},
+	"syscall":     {},
+	"unsafe":      {},
+	"plugin":      {},
+	"runtime/cgo": {},
+	"net":         {},
+	"net/http":    {},
+	"net/rpc":     {},
+	"net/smtp":    {},
+	"debug/elf":   {},
+	"debug/macho": {},
+	"debug/pe":    {},
+	"crypto/x509": {},
 }
 
 func validateImports(code string) error {
@@ -180,7 +194,7 @@ func validateImports(code string) error {
 	}
 	for _, imp := range f.Imports {
 		path := strings.Trim(imp.Path.Value, `"`)
-		if blockedImports[path] {
+		if _, blocked := blockedImports[path]; blocked {
 			return fmt.Errorf("import %q não permitido no sandbox", path)
 		}
 		if strings.HasPrefix(path, "net/") {
@@ -234,8 +248,7 @@ func handleRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(runResponse{Errors: "method not allowed"})
+		writeJSONWithCORS(w, http.StatusMethodNotAllowed, runResponse{Errors: "method not allowed"})
 		return
 	}
 
@@ -244,41 +257,40 @@ func handleRun(w http.ResponseWriter, r *http.Request) {
 	case sem <- struct{}{}:
 		defer func() { <-sem }()
 	default:
-		w.WriteHeader(http.StatusTooManyRequests)
-		json.NewEncoder(w).Encode(runResponse{Errors: "muitas execuções simultâneas, tente novamente em instantes"})
+		writeJSONWithCORS(w, http.StatusTooManyRequests, runResponse{Errors: "muitas execuções simultâneas, tente novamente em instantes"})
 		return
 	}
 
 	var req runRequest
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxCodeSize)).Decode(&req); err != nil {
-		json.NewEncoder(w).Encode(runResponse{Errors: "requisição inválida: " + err.Error()})
+		writeJSONWithCORS(w, http.StatusBadRequest, runResponse{Errors: "requisição inválida: " + err.Error()})
 		return
 	}
 	if req.Body == "" {
-		json.NewEncoder(w).Encode(runResponse{Errors: "código vazio"})
+		writeJSONWithCORS(w, http.StatusBadRequest, runResponse{Errors: "código vazio"})
 		return
 	}
 
 	if err := validateImports(req.Body); err != nil {
-		json.NewEncoder(w).Encode(runResponse{Errors: err.Error()})
+		writeJSONWithCORS(w, http.StatusBadRequest, runResponse{Errors: err.Error()})
 		return
 	}
 
 	dir, err := os.MkdirTemp(sandboxBaseDir, "gorun-*")
 	if err != nil {
 		log.Printf("MkdirTemp: %v", err)
-		json.NewEncoder(w).Encode(runResponse{Errors: errInternal})
+		writeJSONWithCORS(w, http.StatusInternalServerError, runResponse{Errors: errInternal})
 		return
 	}
 	defer os.RemoveAll(dir)
 
 	// Write go.mod and user code
 	if err := os.WriteFile(filepath.Join(dir, goModFile), []byte(goModContent), 0600); err != nil {
-		json.NewEncoder(w).Encode(runResponse{Errors: errInternal})
+		writeJSONWithCORS(w, http.StatusInternalServerError, runResponse{Errors: errInternal})
 		return
 	}
 	if err := os.WriteFile(filepath.Join(dir, "main.go"), []byte(req.Body), 0600); err != nil {
-		json.NewEncoder(w).Encode(runResponse{Errors: errInternal})
+		writeJSONWithCORS(w, http.StatusInternalServerError, runResponse{Errors: errInternal})
 		return
 	}
 
@@ -315,7 +327,7 @@ func handleRun(w http.ResponseWriter, r *http.Request) {
 		resp.Errors = resp.Errors[:maxOutputSize]
 	}
 
-	json.NewEncoder(w).Encode(resp)
+	writeJSONWithCORS(w, http.StatusOK, resp)
 }
 
 // handleLab executes a multi-file Go project (go run or go test).
@@ -327,8 +339,7 @@ func handleLab(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(runResponse{Errors: "method not allowed"})
+		writeJSONWithCORS(w, http.StatusMethodNotAllowed, runResponse{Errors: "method not allowed"})
 		return
 	}
 
@@ -336,31 +347,30 @@ func handleLab(w http.ResponseWriter, r *http.Request) {
 	case sem <- struct{}{}:
 		defer func() { <-sem }()
 	default:
-		w.WriteHeader(http.StatusTooManyRequests)
-		json.NewEncoder(w).Encode(runResponse{Errors: "muitas execuções simultâneas, tente novamente em instantes"})
+		writeJSONWithCORS(w, http.StatusTooManyRequests, runResponse{Errors: "muitas execuções simultâneas, tente novamente em instantes"})
 		return
 	}
 
 	var req labRequest
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxCodeSize*4)).Decode(&req); err != nil {
-		json.NewEncoder(w).Encode(runResponse{Errors: "requisição inválida: " + err.Error()})
+		writeJSONWithCORS(w, http.StatusBadRequest, runResponse{Errors: "requisição inválida: " + err.Error()})
 		return
 	}
 	if len(req.Files) == 0 {
-		json.NewEncoder(w).Encode(runResponse{Errors: "nenhum arquivo enviado"})
+		writeJSONWithCORS(w, http.StatusBadRequest, runResponse{Errors: "nenhum arquivo enviado"})
 		return
 	}
 
 	dir, err := os.MkdirTemp(sandboxBaseDir, "golab-*")
 	if err != nil {
 		log.Printf("MkdirTemp: %v", err)
-		json.NewEncoder(w).Encode(runResponse{Errors: errInternal})
+		writeJSONWithCORS(w, http.StatusInternalServerError, runResponse{Errors: errInternal})
 		return
 	}
 	defer os.RemoveAll(dir)
 
 	if err := os.WriteFile(filepath.Join(dir, goModFile), []byte(goModContent), 0600); err != nil {
-		json.NewEncoder(w).Encode(runResponse{Errors: errInternal})
+		writeJSONWithCORS(w, http.StatusInternalServerError, runResponse{Errors: errInternal})
 		return
 	}
 
@@ -368,23 +378,23 @@ func handleLab(w http.ResponseWriter, r *http.Request) {
 		// Only allow simple filenames — no path traversal.
 		name := filepath.Base(f.Name)
 		if name == "." || name == ".." || name == "" {
-			json.NewEncoder(w).Encode(runResponse{Errors: "nome de arquivo inválido: " + f.Name})
+			writeJSONWithCORS(w, http.StatusBadRequest, runResponse{Errors: "nome de arquivo inválido: " + f.Name})
 			return
 		}
 		if name == "go.mod" || name == "go.sum" {
-			json.NewEncoder(w).Encode(runResponse{Errors: "não é permitido enviar go.mod ou go.sum"})
+			writeJSONWithCORS(w, http.StatusBadRequest, runResponse{Errors: "não é permitido enviar go.mod ou go.sum"})
 			return
 		}
 		if !strings.HasSuffix(name, ".go") {
-			json.NewEncoder(w).Encode(runResponse{Errors: "apenas arquivos .go são aceitos"})
+			writeJSONWithCORS(w, http.StatusBadRequest, runResponse{Errors: "apenas arquivos .go são aceitos"})
 			return
 		}
 		if err := validateImports(f.Body); err != nil {
-			json.NewEncoder(w).Encode(runResponse{Errors: err.Error()})
+			writeJSONWithCORS(w, http.StatusBadRequest, runResponse{Errors: err.Error()})
 			return
 		}
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(f.Body), 0600); err != nil {
-			json.NewEncoder(w).Encode(runResponse{Errors: errInternal})
+			writeJSONWithCORS(w, http.StatusInternalServerError, runResponse{Errors: errInternal})
 			return
 		}
 	}
@@ -429,7 +439,7 @@ func handleLab(w http.ResponseWriter, r *http.Request) {
 		resp.Errors = resp.Errors[:maxOutputSize]
 	}
 
-	json.NewEncoder(w).Encode(resp)
+	writeJSONWithCORS(w, http.StatusOK, resp)
 }
 
 func main() {
