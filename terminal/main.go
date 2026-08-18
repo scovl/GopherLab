@@ -168,20 +168,26 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 	var closeOnce sync.Once
 	signalDone := func() { closeOnce.Do(func() { close(done) }) }
 
-	go runTimeoutWatcher(done, &lastActivity, signalDone, release)
-	go runPingSender(ws, done, signalDone, release)
-	go runWSReader(ws, ptmx, &lastActivity, signalDone, release)
+	var wg sync.WaitGroup
+	wg.Add(3)
+	go func() { defer wg.Done(); runTimeoutWatcher(done, &lastActivity, signalDone, release) }()
+	go func() { defer wg.Done(); runPingSender(ws, done, signalDone, release) }()
+	go func() { defer wg.Done(); runWSReader(ws, ptmx, &lastActivity, signalDone, release) }()
 
 	// PTY → WS (blocks until pty closes or error)
 	buf := make([]byte, 4096)
 	for {
 		n, err := ptmx.Read(buf)
 		if err != nil {
+			signalDone()
+			wg.Wait()
 			return
 		}
 		lastActivity.Store(time.Now())
 		ws.SetWriteDeadline(time.Now().Add(writeWait))
 		if err := ws.WriteMessage(websocket.BinaryMessage, buf[:n]); err != nil {
+			signalDone()
+			wg.Wait()
 			return
 		}
 	}
@@ -196,8 +202,11 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", handleWS)
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok"))
+		if _, err := w.Write([]byte(`"ok"`)); err != nil {
+			log.Printf("write health response: %v", err)
+		}
 	})
 
 	log.Printf("Terminal service on :%s", port)
