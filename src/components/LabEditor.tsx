@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { solveChallenge } from '../utils/pow';
 import { makeAutoIndentHandler } from '../utils/autoIndent';
-import Editor from 'react-simple-code-editor';
+import EditorDefault from 'react-simple-code-editor';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-go';
 import 'prismjs/themes/prism.css';
+
+const Editor = ((EditorDefault as unknown as { default?: typeof EditorDefault }).default ?? EditorDefault) as typeof EditorDefault;
 
 // ---------------------------------------------------------------------------
 // Types

@@ -3,12 +3,14 @@ import ReactMarkdown from 'react-markdown';
 import { mdComponents } from './mdComponents';
 import { solveChallenge } from '../../utils/pow';
 import { makeAutoIndentHandler } from '../../utils/autoIndent';
-import Editor from 'react-simple-code-editor';
+import EditorDefault from 'react-simple-code-editor';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-go';
 import 'prismjs/themes/prism.css';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
+
+const Editor = ((EditorDefault as unknown as { default?: typeof EditorDefault }).default ?? EditorDefault) as typeof EditorDefault;
 
 export interface GoCodeEditorProps {
   referenceCode?: string;

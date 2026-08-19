@@ -3,6 +3,7 @@ import { Lesson, Module } from '../types';
 import { VesaPhases } from './VesaPhases';
 import { useRoadmap } from '../hooks/useRoadmap';
 import { SelectionToolbar } from './SelectionToolbar';
+import { ErrorBoundary } from './ErrorBoundary';
 
 interface LessonViewProps {
   lesson: Lesson;
@@ -135,22 +136,24 @@ export function LessonView({ lesson, module, onBack, onNavigate, onPinNote }: Re
         <span aria-current="page">{lesson.title}</span>
       </nav>
 
-      <SelectionToolbar lessonId={lesson.id} lessonTitle={lesson.title} onPinNote={onPinNote}>
-        <header className="lesson-header">
-          <div className="lesson-header-badge" style={{ backgroundColor: module.color }}>
-            {module.title}
-          </div>
-          <h1>{lesson.title}</h1>
-          <p className="lesson-description">{lesson.description}</p>
-          <div className="lesson-meta-bar">
-            <span className="meta-item" aria-label={`Tempo estimado: ${lesson.estimatedMinutes} minutos`}>
-              ⏱ ~{lesson.estimatedMinutes} min
-            </span>
-          </div>
-        </header>
+      <ErrorBoundary>
+        <SelectionToolbar lessonId={lesson.id} lessonTitle={lesson.title} onPinNote={onPinNote}>
+          <header className="lesson-header">
+            <div className="lesson-header-badge" style={{ backgroundColor: module.color }}>
+              {module.title}
+            </div>
+            <h1>{lesson.title}</h1>
+            <p className="lesson-description">{lesson.description}</p>
+            <div className="lesson-meta-bar">
+              <span className="meta-item" aria-label={`Tempo estimado: ${lesson.estimatedMinutes} minutos`}>
+                ⏱ ~{lesson.estimatedMinutes} min
+              </span>
+            </div>
+          </header>
 
-        <VesaPhases key={lesson.id} vesa={lesson.vesa} lessonId={lesson.id} />
-      </SelectionToolbar>
+          <VesaPhases key={lesson.id} vesa={lesson.vesa} lessonId={lesson.id} />
+        </SelectionToolbar>
+      </ErrorBoundary>
 
       <nav className="lesson-pagination" aria-label="Navegação entre aulas">
         {prev ? (

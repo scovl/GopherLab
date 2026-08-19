@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { VesaPhase, VesaContent, VESA_LABELS } from '../types';
 import { useProgress } from '../context/ProgressContext';
+import { ErrorBoundary } from './ErrorBoundary';
 import { VisaoGeralContent } from './vesa/VisaoGeral';
 import { ExperimentacaoContent } from './vesa/Experimentacao';
 import { SocializacaoContent } from './vesa/Socializacao';
@@ -67,18 +68,20 @@ export function VesaPhases({ vesa, lessonId }: Readonly<VesaPhasesProps>) {
           <p>{VESA_LABELS[activePhase].description}</p>
         </div>
 
-        {activePhase === 'visaoGeral' && (
-          <VisaoGeralContent content={vesa.visaoGeral} lessonId={lessonId} />
-        )}
-        {activePhase === 'experimentacao' && (
-          <ExperimentacaoContent content={vesa.experimentacao} lessonId={lessonId} />
-        )}
-        {activePhase === 'socializacao' && (
-          <SocializacaoContent content={vesa.socializacao} />
-        )}
-        {activePhase === 'aplicacao' && (
-          <AplicacaoContent content={vesa.aplicacao} lessonId={lessonId} />
-        )}
+        <ErrorBoundary key={activePhase}>
+          {activePhase === 'visaoGeral' && (
+            <VisaoGeralContent content={vesa.visaoGeral} lessonId={lessonId} />
+          )}
+          {activePhase === 'experimentacao' && (
+            <ExperimentacaoContent content={vesa.experimentacao} lessonId={lessonId} />
+          )}
+          {activePhase === 'socializacao' && (
+            <SocializacaoContent content={vesa.socializacao} />
+          )}
+          {activePhase === 'aplicacao' && (
+            <AplicacaoContent content={vesa.aplicacao} lessonId={lessonId} />
+          )}
+        </ErrorBoundary>
       </div>
 
       {/* Phase Navigation */}
